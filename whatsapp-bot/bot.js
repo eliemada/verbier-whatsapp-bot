@@ -15,7 +15,10 @@ const cron = require('node-cron');
 
 // Configuration
 const API_URL = 'http://localhost:3001';
-const GROUP_NAME = 'Verbier Snow Updates'; // Change to your group name
+
+// Set this to your group's chat ID (run !snow chatid in the group to find it)
+// Format: 123456789@g.us
+const TARGET_CHAT_ID = process.env.WHATSAPP_CHAT_ID || null;
 
 // Initialize WhatsApp client
 const client = new Client({
@@ -82,26 +85,29 @@ async function getImageAtTime(hour, minute = 0, date = null) {
 // Sending Messages
 // =============================================================================
 
-async function sendImageToGroup(groupName, imageBuffer, caption) {
-    const chats = await client.getChats();
-    const group = chats.find(chat => chat.isGroup && chat.name === groupName);
-
-    if (!group) {
-        console.error(`Group "${groupName}" not found`);
+async function sendImageToChat(chatId, imageBuffer, caption) {
+    if (!chatId) {
+        console.error('No TARGET_CHAT_ID configured. Run !snow chatid in your group to get it.');
         return false;
     }
 
-    const media = new MessageMedia('image/jpeg', imageBuffer.toString('base64'), 'verbier.jpg');
-    await group.sendMessage(media, { caption });
-    console.log(`Sent image to ${groupName}: ${caption}`);
-    return true;
+    try {
+        const chat = await client.getChatById(chatId);
+        const media = new MessageMedia('image/jpeg', imageBuffer.toString('base64'), 'verbier.jpg');
+        await chat.sendMessage(media, { caption });
+        console.log(`Sent image to ${chat.name}: ${caption}`);
+        return true;
+    } catch (error) {
+        console.error(`Failed to send to chat ${chatId}:`, error.message);
+        return false;
+    }
 }
 
 async function sendMorningUpdate() {
     try {
         const image = await get8AMImage();
         const date = new Date().toLocaleDateString('en-CH');
-        await sendImageToGroup(GROUP_NAME, image, `Good morning! Verbier at 8 AM - ${date}`);
+        await sendImageToChat(TARGET_CHAT_ID, image, `Good morning! Verbier at 8 AM - ${date}`);
     } catch (error) {
         console.error('Failed to send morning update:', error);
     }
@@ -111,7 +117,7 @@ async function sendNoonUpdate() {
     try {
         const image = await getNoonImage();
         const date = new Date().toLocaleDateString('en-CH');
-        await sendImageToGroup(GROUP_NAME, image, `Noon update from Verbier! - ${date}`);
+        await sendImageToChat(TARGET_CHAT_ID, image, `Noon update from Verbier! - ${date}`);
     } catch (error) {
         console.error('Failed to send noon update:', error);
     }
@@ -199,6 +205,16 @@ client.on('message', async (msg) => {
         }
     }
 
+    // !snow chatid - get this chat's ID (for configuration)
+    else if (body === '!snow chatid' || body === '!verbier chatid') {
+        const chat = await msg.getChat();
+        await msg.reply(
+            `*Chat ID:* \`${chat.id._serialized}\`\n\n` +
+            `Add this to your .env file:\n` +
+            `WHATSAPP_CHAT_ID=${chat.id._serialized}`
+        );
+    }
+
     // !snow help
     else if (body === '!snow help' || body === '!verbier help') {
         await msg.reply(
@@ -207,6 +223,7 @@ client.on('message', async (msg) => {
             '!snow 8am - Today\'s 8 AM image\n' +
             '!snow noon - Today\'s noon image\n' +
             '!snow history YYYY-MM-DD - Image from a specific date\n' +
+            '!snow chatid - Get this chat\'s ID for scheduled messages\n' +
             '!snow help - Show this help'
         );
     }
