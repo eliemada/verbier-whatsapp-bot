@@ -184,11 +184,45 @@ class TeleportClient:
             FrameNotAvailableError: If the frame doesn't exist.
             TeleportConnectionError: On network failures.
         """
+        return await self.get_image_at(
+            frame.feed_id, frame.timestamp, size=size
+        )
+
+    async def get_image_at(
+        self,
+        feed_id: str,
+        dt: datetime,
+        size: ImageSize | None = None,
+    ) -> bytes:
+        """Fetch image at a specific datetime.
+
+        Convenience method for getting historical frames without
+        creating a Frame object first.
+
+        Args:
+            feed_id: The teleport.io feed identifier.
+            dt: The datetime to fetch (should be timezone-aware UTC).
+            size: Image size (defaults to client's default_size).
+
+        Returns:
+            Raw image bytes (JPEG).
+
+        Raises:
+            FrameNotAvailableError: If no frame exists at that time.
+            TeleportConnectionError: On network failures.
+
+        Example:
+            from datetime import datetime, timezone
+
+            # Get frame from yesterday at 8 AM UTC
+            yesterday_8am = datetime(2025, 11, 25, 8, 0, tzinfo=timezone.utc)
+            image = await client.get_image_at("fe5nsqhtejqi", yesterday_8am)
+        """
         size = size or self._default_size
         url = f"{self.BASE_URL}/api/v2/frame-get"
-        timestamp = frame.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+        timestamp = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         params = {
-            "feedid": frame.feed_id,
+            "feedid": feed_id,
             "sizecode": size.value,
             "frametime": timestamp,
         }
@@ -201,9 +235,7 @@ class TeleportClient:
             ) from e
 
         if response.status_code == 404:
-            raise FrameNotAvailableError(
-                f"{frame.feed_id} at {frame.timestamp.isoformat()}"
-            )
+            raise FrameNotAvailableError(f"{feed_id} at {dt.isoformat()}")
 
         response.raise_for_status()
         return response.content
