@@ -11,7 +11,7 @@ from .exceptions import (
     FrameNotAvailableError,
     TeleportConnectionError,
 )
-from .models import Frame, FrameQueryResult
+from .models import Frame, FrameQueryResult, VideoClip
 
 
 class ImageSize(str, Enum):
@@ -22,22 +22,26 @@ class ImageSize(str, Enum):
 
 
 class TeleportClient:
-    """Async client for fetching images from teleport.io feeds."""
+    """Async client for fetching images and videos from teleport.io feeds."""
 
     BASE_URL = "https://www.teleport.io"
+    VIDEO_BASE_URL = "https://video.teleport.io"
 
     def __init__(
         self,
         timeout: float = 30.0,
+        video_timeout: float = 300.0,
         default_size: ImageSize = ImageSize.LARGE,
     ) -> None:
         """Initialize the client.
 
         Args:
-            timeout: HTTP request timeout in seconds.
+            timeout: HTTP request timeout in seconds for images.
+            video_timeout: HTTP request timeout in seconds for videos (default 5 min).
             default_size: Default image size for fetches.
         """
         self._timeout = timeout
+        self._video_timeout = video_timeout
         self._default_size = default_size
         self._client: httpx.AsyncClient | None = None
 
@@ -203,3 +207,76 @@ class TeleportClient:
 
         response.raise_for_status()
         return response.content
+
+    async def get_video(self, clip: VideoClip) -> bytes:
+        """Fetch a video clip.
+
+        Note: Video downloads can be slow (~15 KB/s). Consider using
+        stream_video() for large files.
+
+        Args:
+            clip: VideoClip metadata with resource/stream/part IDs.
+
+        Returns:
+            Raw video bytes (MP4).
+
+        Raises:
+            FrameNotAvailableError: If the video doesn't exist.
+            TeleportConnectionError: On network failures.
+        """
+        url = f"{self.VIDEO_BASE_URL}/api/v2/video-get"
+        timestamp = clip.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        params = {
+            "feedid": clip.feed_id,
+            "videoresourceid": clip.video_resource_id,
+            "videostreamid": clip.video_stream_id,
+            "videopartid": clip.video_part_id,
+            "rt": timestamp,
+        }
+
+        try:
+            response = await self.client.get(
+                url, params=params, timeout=self._video_timeout
+            )
+        except httpx.RequestError as e:
+            raise TeleportConnectionError(
+                f"Failed to connect to video.teleport.io: {e}", original_error=e
+            ) from e
+
+        if response.status_code == 404:
+            raise FrameNotAvailableError(f"Video clip not found: {clip.video_part_id}")
+
+        response.raise_for_status()
+        return response.content
+
+    async def stream_video(
+        self,
+        clip: VideoClip,
+    ) -> httpx.Response:
+        """Stream a video clip (for large files).
+
+        Returns an httpx.Response that can be iterated for chunks.
+        Caller is responsible for reading and closing the response.
+
+        Args:
+            clip: VideoClip metadata with resource/stream/part IDs.
+
+        Returns:
+            httpx.Response with streaming content.
+
+        Example:
+            async with client.stream_video(clip) as response:
+                async for chunk in response.aiter_bytes(chunk_size=8192):
+                    file.write(chunk)
+        """
+        url = f"{self.VIDEO_BASE_URL}/api/v2/video-get"
+        timestamp = clip.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        params = {
+            "feedid": clip.feed_id,
+            "videoresourceid": clip.video_resource_id,
+            "videostreamid": clip.video_stream_id,
+            "videopartid": clip.video_part_id,
+            "rt": timestamp,
+        }
+
+        return await self.client.stream("GET", url, params=params)

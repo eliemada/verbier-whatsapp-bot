@@ -7,7 +7,7 @@ from .exceptions import (
     TeleportConnectionError,
     TeleportError,
 )
-from .models import Feed, Frame, FrameQueryResult
+from .models import Feed, Frame, FrameQueryResult, VideoClip
 
 __all__ = [
     "TeleportClient",
@@ -15,6 +15,7 @@ __all__ = [
     "Feed",
     "Frame",
     "FrameQueryResult",
+    "VideoClip",
     "TeleportError",
     "FeedNotFoundError",
     "FrameNotAvailableError",

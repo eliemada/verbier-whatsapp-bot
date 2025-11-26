@@ -27,3 +27,13 @@ class FrameQueryResult(BaseModel):
     end_time: datetime
     interval_seconds: int = Field(alias="interval")
     frames: list[Frame]
+
+
+class VideoClip(BaseModel):
+    """Metadata for a video clip request."""
+
+    feed_id: str
+    video_resource_id: str
+    video_stream_id: str
+    video_part_id: str
+    timestamp: datetime
