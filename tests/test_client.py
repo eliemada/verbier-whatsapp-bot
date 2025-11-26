@@ -171,7 +171,7 @@ class TestTeleportClient:
             params={
                 "feedid": "test123",
                 "sizecode": "x768",
-                "timestamp": "2025-11-25T21:12:00Z",
+                "frametime": "2025-11-25T21:12:00Z",
             },
         ).respond(content=sample_image_bytes)
 

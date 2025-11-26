@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from teleport_client import TeleportClient, ImageSize, VideoClip
+from teleport_client import TeleportClient, ImageSize, VideoClip, Frame
 
 
 FEED_ID = "fe5nsqhtejqi"
@@ -30,27 +30,32 @@ async def demo_images() -> None:
         small_path.write_bytes(small_image)
         print(f"  Saved to {small_path} ({len(small_image):,} bytes)")
 
-        # 3. Query frame history (last 3 days)
-        end_time = datetime.now(timezone.utc)
-        start_time = end_time - timedelta(days=3)
-        print(f"\nQuerying frame history from {start_time.date()} to {end_time.date()}...")
+        # 3. Fetch historical frames at 3PM local (Verbier = CET = UTC+1)
+        # 3PM CET = 14:00 UTC
+        print("\n--- Historical frames at 3PM local (14:00 UTC) ---")
 
-        history = await client.get_frame_history(
-            FEED_ID,
-            start_time=start_time,
-            end_time=end_time,
-            interval=86400,  # daily
-        )
-        print(f"  Found {len(history.frames)} frames")
+        today = datetime.now(timezone.utc).date()
 
-        # 4. Fetch first historical frame if available
-        if history.frames:
-            frame = history.frames[0]
-            print(f"\nFetching historical frame from {frame.timestamp}...")
-            frame_image = await client.get_frame_image(frame)
-            frame_path = OUTPUT_DIR / f"frame_{frame.timestamp.strftime('%Y%m%d_%H%M%S')}.jpg"
-            frame_path.write_bytes(frame_image)
-            print(f"  Saved to {frame_path} ({len(frame_image):,} bytes)")
+        for days_ago in range(3, 0, -1):  # 3 days ago, 2 days ago, 1 day ago
+            target_date = today - timedelta(days=days_ago)
+            target_time = datetime(
+                target_date.year,
+                target_date.month,
+                target_date.day,
+                14, 0, 0,  # 14:00 UTC = 3PM CET (Verbier)
+                tzinfo=timezone.utc,
+            )
+
+            frame = Frame(feed_id=FEED_ID, timestamp=target_time)
+
+            print(f"\nFetching frame for {target_date} at 3PM local (14:00 UTC)...")
+            try:
+                frame_image = await client.get_frame_image(frame)
+                frame_path = OUTPUT_DIR / f"daily_3pm_{target_date}.jpg"
+                frame_path.write_bytes(frame_image)
+                print(f"  Saved to {frame_path} ({len(frame_image):,} bytes)")
+            except Exception as e:
+                print(f"  Error: {e}")
 
 
 async def demo_video() -> None:

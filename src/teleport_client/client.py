@@ -190,7 +190,7 @@ class TeleportClient:
         params = {
             "feedid": frame.feed_id,
             "sizecode": size.value,
-            "timestamp": timestamp,
+            "frametime": timestamp,
         }
 
         try:
