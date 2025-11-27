@@ -113,18 +113,20 @@ const commands = {
                 '',
                 '*Images*',
                 '!! - Current live image',
-                '!snow 8am - Today 8 AM',
-                '!snow noon - Today noon',
-                '!snow 15:00 - Today at time',
-                '!snow 11-20 - Date at noon',
-                '!snow 11-20 8am - Date at time',
+                '!snow 8am - Today at 8 AM',
+                '!snow 3 pm - Today at 3 PM',
+                '!snow 15 - Today at 15:00',
+                '!snow 9:30am - Today at 9:30 AM',
+                '!snow noon - Today at noon',
+                '!snow 11-20 - Nov 20 at noon',
+                '!snow 11-20 8am - Nov 20 at 8 AM',
                 '',
                 '*Weather*',
-                '!snow weather - Current weather',
+                '!snow weather - Current conditions',
                 '',
                 '*Subscriptions*',
-                '!snow subscribe - Get daily updates',
-                '!snow unsubscribe - Stop daily updates',
+                '!snow subscribe - Daily updates',
+                '!snow unsubscribe - Stop updates',
                 '!snow status - Check subscription',
             ].join('\n'),
         );
@@ -162,19 +164,20 @@ export async function handleMessage(msg) {
             return;
         }
 
-        // !snow HH:MM or !snow Xam/pm - today at time
-        const timeOnlyMatch = body.match(/^!(snow|verbier)\s+(\d{1,2}:\d{2}|\d{1,2}(?:am|pm))$/i);
+        // !snow <time> - today at time
+        // Supports: 15, 15:00, 3am, 3 am, 3:30pm, 3:30 pm, noon, midnight
+        const timeOnlyMatch = body.match(
+            /^!(snow|verbier)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|noon|midnight)$/i,
+        );
         if (timeOnlyMatch) {
             const time = parseTime(timeOnlyMatch[2]);
-            if (time) {
-                const image = await getImageAt(time.hour, time.minute);
-                const media = new MessageMedia(
-                    'image/jpeg',
-                    image.toString('base64'),
-                    'verbier.jpg',
-                );
-                await msg.reply(media, null, { caption: `Verbier today at ${time.label}` });
+            if (!time) {
+                await msg.reply('Invalid time format. Try: 8am, 3 pm, 15:00, noon');
+                return;
             }
+            const image = await getImageAt(time.hour, time.minute);
+            const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier.jpg');
+            await msg.reply(media, null, { caption: `Verbier today at ${time.label}` });
             return;
         }
 
@@ -187,13 +190,46 @@ export async function handleMessage(msg) {
                 return;
             }
 
-            const time = parseTime(dateMatch[3]) ?? { hour: 12, minute: 0, label: 'noon' };
-            const image = await getImageAt(time.hour, time.minute, date);
-            const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier.jpg');
-            await msg.reply(media, null, { caption: `Verbier on ${date} at ${time.label}` });
+            const timeStr = dateMatch[3]?.trim();
+            if (timeStr) {
+                const time = parseTime(timeStr);
+                if (!time) {
+                    await msg.reply('Invalid time format. Try: 8am, 3 pm, 15:00, noon');
+                    return;
+                }
+                const image = await getImageAt(time.hour, time.minute, date);
+                const media = new MessageMedia(
+                    'image/jpeg',
+                    image.toString('base64'),
+                    'verbier.jpg',
+                );
+                await msg.reply(media, null, { caption: `Verbier on ${date} at ${time.label}` });
+            } else {
+                const image = await getImageAt(12, 0, date);
+                const media = new MessageMedia(
+                    'image/jpeg',
+                    image.toString('base64'),
+                    'verbier.jpg',
+                );
+                await msg.reply(media, null, { caption: `Verbier on ${date} at noon` });
+            }
+            return;
+        }
+
+        // Unknown !snow/!verbier command
+        if (body.startsWith('!snow') || body.startsWith('!verbier')) {
+            await msg.reply('Unknown command. Type !snow help for available commands.');
         }
     } catch (error) {
-        log.error('Command error:', error.message);
-        await msg.reply('Sorry, something went wrong.');
+        log.error('Command error:', error.message, error.stack);
+
+        // Provide specific error messages
+        if (error.message.includes('Historical footage not available')) {
+            await msg.reply('Historical footage not available for this time.');
+        } else if (error.message.includes('Teleport API')) {
+            await msg.reply('Unable to fetch image. Please try again later.');
+        } else {
+            await msg.reply('Sorry, something went wrong.');
+        }
     }
 }

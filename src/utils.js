@@ -18,35 +18,89 @@ export function getVerbierNow() {
 
 /**
  * Parses time string into hour and minute.
- * Supports: "8am", "3pm", "15:00", "8:30"
+ * Supports many formats:
+ *   - 24h: "15", "15:00", "8:30"
+ *   - 12h: "3am", "3 am", "3:30pm", "3:30 pm", "9 PM"
+ *   - Special: "noon", "midnight"
  */
 export function parseTime(timeStr) {
     if (!timeStr) return null;
 
-    const hhmmMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
-    if (hhmmMatch) {
-        const [, h, m] = hhmmMatch.map(Number);
-        if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
-            return { hour: h, minute: m, label: timeStr };
-        }
+    const str = timeStr.trim().toLowerCase();
+
+    // Special cases
+    if (str === 'noon' || str === '12pm' || str === '12 pm') {
+        return { hour: 12, minute: 0, label: 'noon' };
+    }
+    if (str === 'midnight' || str === '12am' || str === '12 am') {
+        return { hour: 0, minute: 0, label: 'midnight' };
     }
 
-    const ampmMatch = timeStr.match(/^(\d{1,2})(am|pm)$/i);
-    if (ampmMatch) {
-        let h = parseInt(ampmMatch[1], 10);
-        const isPM = ampmMatch[2].toLowerCase() === 'pm';
+    // HH:MM with optional am/pm (e.g., "15:00", "3:30", "3:30pm", "3:30 pm")
+    const timeWithMinutes = str.match(/^(\d{1,2}):(\d{2})\s*(am|pm)?$/i);
+    if (timeWithMinutes) {
+        const [, hStr, mStr, period] = timeWithMinutes;
+        let h = parseInt(hStr, 10);
+        const m = parseInt(mStr, 10);
+
+        if (m < 0 || m > 59) return null;
+
+        if (period) {
+            // 12-hour format only accepts 1-12
+            if (h < 1 || h > 12) return null;
+            const isPM = period.toLowerCase() === 'pm';
+            if (isPM && h !== 12) h += 12;
+            if (!isPM && h === 12) h = 0;
+        } else {
+            // 24-hour format
+            if (h < 0 || h > 23) return null;
+        }
+
+        const label = formatTimeLabel(h, m);
+        return { hour: h, minute: m, label };
+    }
+
+    // Hour only with am/pm (e.g., "3am", "3 am", "9pm", "9 pm")
+    const hourWithPeriod = str.match(/^(\d{1,2})\s*(am|pm)$/i);
+    if (hourWithPeriod) {
+        const [, hStr, period] = hourWithPeriod;
+        let h = parseInt(hStr, 10);
+
+        // 12-hour format only accepts 1-12
+        if (h < 1 || h > 12) return null;
+
+        const isPM = period.toLowerCase() === 'pm';
         if (isPM && h !== 12) h += 12;
         if (!isPM && h === 12) h = 0;
-        if (h >= 0 && h <= 23) {
-            return { hour: h, minute: 0, label: timeStr.toUpperCase() };
-        }
+
+        const label = formatTimeLabel(h, 0);
+        return { hour: h, minute: 0, label };
     }
 
-    if (timeStr === 'noon' || timeStr === '12pm') {
-        return { hour: 12, minute: 0, label: 'noon' };
+    // Hour only 24h format (e.g., "15", "8")
+    const hourOnly = str.match(/^(\d{1,2})$/);
+    if (hourOnly) {
+        const h = parseInt(hourOnly[1], 10);
+        if (h >= 0 && h <= 23) {
+            const label = formatTimeLabel(h, 0);
+            return { hour: h, minute: 0, label };
+        }
     }
 
     return null;
+}
+
+/**
+ * Formats hour and minute into a readable label.
+ */
+function formatTimeLabel(hour, minute) {
+    if (hour === 0 && minute === 0) return 'midnight';
+    if (hour === 12 && minute === 0) return 'noon';
+
+    const h12 = hour % 12 || 12;
+    const period = hour < 12 ? 'AM' : 'PM';
+    const minStr = minute > 0 ? `:${String(minute).padStart(2, '0')}` : '';
+    return `${h12}${minStr} ${period}`;
 }
 
 /**
