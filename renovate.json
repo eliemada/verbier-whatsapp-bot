@@ -1,0 +1,28 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "lockFileMaintenance": {
+        "enabled": true
+    },
+    "extends": ["config:recommended", ":dependencyDashboard"],
+    "commitMessagePrefix": ":arrow_up: ",
+    "labels": ["dependencies"],
+    "packageRules": [
+        {
+            "groupName": "💬 WhatsApp & bot core",
+            "matchPackagePatterns": ["^whatsapp-web", "^qrcode"]
+        },
+        {
+            "groupName": "⏰ Scheduling & config",
+            "matchPackagePatterns": ["^node-cron", "^dotenv"]
+        },
+        {
+            "groupName": "🔍 Linting & formatting",
+            "matchPackagePatterns": ["^eslint", "^prettier", "^globals", "^@eslint"]
+        },
+        {
+            "groupName": "🚨 Major version updates",
+            "matchUpdateTypes": ["major"],
+            "dependencyDashboardApproval": true
+        }
+    ]
+}
