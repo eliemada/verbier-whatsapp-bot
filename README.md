@@ -13,16 +13,18 @@ WhatsApp bot that sends webcam images from Verbier with real-time weather data f
 
 ## Commands
 
-| Command           | Description                      |
-| ----------------- | -------------------------------- |
-| `!!`              | Current live image + weather     |
-| `!snow weather`   | Weather only                     |
-| `!snow 8am`       | Today's 8 AM image               |
-| `!snow noon`      | Today's noon image               |
-| `!snow 15:00`     | Today at specific time           |
-| `!snow 11-20`     | Historical date at noon          |
-| `!snow 11-20 8am` | Historical date at specific time |
-| `!snow chatid`    | Get chat ID for config           |
+| Command             | Description                      |
+| ------------------- | -------------------------------- |
+| `!!`                | Current live image + weather     |
+| `!snow weather`     | Weather only                     |
+| `!snow 8am`         | Today's 8 AM image               |
+| `!snow noon`        | Today's noon image               |
+| `!snow 15:00`       | Today at specific time           |
+| `!snow 11-20`       | Historical date at noon          |
+| `!snow 11-20 8am`   | Historical date at specific time |
+| `!snow subscribe`   | Subscribe to daily updates       |
+| `!snow unsubscribe` | Unsubscribe from updates         |
+| `!snow chatid`      | Get chat ID (debug)              |
 
 ## Setup
 
@@ -58,7 +60,7 @@ npm run format       # Format code
 - **Webcam**: [Teleport.io](https://teleport.io) - Verbier feed
 - **Weather**: [MeteoSwiss Open Data](https://www.meteoswiss.admin.ch/services-and-publications/service/open-data.html) - 10-minute updates
 
-## Docker (Unraid)
+## Docker
 
 ```bash
 # First run - see QR code
@@ -71,7 +73,10 @@ docker compose up -d
 docker compose logs -f
 ```
 
-Session data persists in `./data/` directory.
+Persistent data stored in `./data/`:
+
+- WhatsApp session auth
+- Chat subscriptions
 
 ## Requirements
 
