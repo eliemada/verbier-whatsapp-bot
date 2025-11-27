@@ -6,8 +6,6 @@ services:
         shm_size: '1gb'
         environment:
             - DATA_DIR=/app/data
-            # For pairing code auth (instead of QR), set your phone number:
-            # - PHONE_NUMBER=41791234567
         volumes:
             - ./data:/app/data
             - ./data:/app/.wwebjs_auth
