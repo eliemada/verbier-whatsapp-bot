@@ -9,7 +9,7 @@ import qrcode from 'qrcode-terminal';
 import cron from 'node-cron';
 import 'dotenv/config';
 
-import { CONFIG, CHAT_IDS } from './src/config.js';
+import { CONFIG, chatManager } from './src/config.js';
 import { log } from './src/logger.js';
 import { getImageAt } from './src/teleport.js';
 import { getWeather, formatCaption } from './src/weather.js';
@@ -56,11 +56,12 @@ async function sendToChat(chatId, image, caption) {
 }
 
 async function broadcast(image, caption) {
-    if (!CHAT_IDS.length) {
-        log.error('No WHATSAPP_CHAT_IDS configured');
+    const chatIds = chatManager.getAll();
+    if (!chatIds.length) {
+        log.error('No chats subscribed');
         return;
     }
-    await Promise.all(CHAT_IDS.map(id => sendToChat(id, image, caption)));
+    await Promise.all(chatIds.map(id => sendToChat(id, image, caption)));
 }
 
 async function sendScheduledUpdate(hour, minute, title) {
@@ -99,7 +100,7 @@ function setupSchedule() {
     );
 
     log.info(`Scheduled: ${morning.hour}:00 & ${noon.hour}:00 (${CONFIG.timezone})`);
-    log.info(`Target chats: ${CHAT_IDS.length || 'none'}`);
+    log.info(`Subscribed chats: ${chatManager.getAll().length || 'none'}`);
 }
 
 // =============================================================================

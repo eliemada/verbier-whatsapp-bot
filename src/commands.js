@@ -4,6 +4,7 @@ const { MessageMedia } = pkg;
 import { getCurrentImage, getImageAt } from './teleport.js';
 import { getWeather, formatCaption } from './weather.js';
 import { parseTime, parseDate } from './utils.js';
+import { chatManager } from './config.js';
 import { log } from './logger.js';
 
 const commands = {
@@ -54,11 +55,59 @@ const commands = {
         await msg.reply(lines.join('\n'));
     },
 
+    async '!snow subscribe'(msg) {
+        const chat = await msg.getChat();
+        const chatId = chat.id._serialized;
+
+        if (chatManager.has(chatId)) {
+            await msg.reply('This chat is already subscribed to daily updates.');
+            return;
+        }
+
+        chatManager.add(chatId);
+        await msg.reply(
+            `✅ Subscribed!\n\nThis chat will now receive daily updates at 8 AM and noon.\n\nUse \`!snow unsubscribe\` to stop.`,
+        );
+        log.info(`Chat subscribed: ${chat.name} (${chatId})`);
+    },
+
+    async '!snow unsubscribe'(msg) {
+        const chat = await msg.getChat();
+        const chatId = chat.id._serialized;
+
+        if (!chatManager.has(chatId)) {
+            await msg.reply('This chat is not subscribed to daily updates.');
+            return;
+        }
+
+        chatManager.remove(chatId);
+        await msg.reply(`❌ Unsubscribed.\n\nThis chat will no longer receive daily updates.`);
+        log.info(`Chat unsubscribed: ${chat.name} (${chatId})`);
+    },
+
+    async '!snow status'(msg) {
+        const chat = await msg.getChat();
+        const chatId = chat.id._serialized;
+        const isSubscribed = chatManager.has(chatId);
+        const totalChats = chatManager.getAll().length;
+
+        await msg.reply(
+            [
+                `*Bot Status*`,
+                '',
+                `📍 This chat: ${isSubscribed ? '✅ Subscribed' : '❌ Not subscribed'}`,
+                `📊 Total subscribed chats: ${totalChats}`,
+                '',
+                isSubscribed
+                    ? 'Use `!snow unsubscribe` to stop updates.'
+                    : 'Use `!snow subscribe` to get daily updates.',
+            ].join('\n'),
+        );
+    },
+
     async '!snow chatid'(msg) {
         const chat = await msg.getChat();
-        await msg.reply(
-            `*Chat ID:* \`${chat.id._serialized}\`\n\nAdd to .env:\nWHATSAPP_CHAT_IDS=${chat.id._serialized}`,
-        );
+        await msg.reply(`*Chat ID:* \`${chat.id._serialized}\``);
     },
 
     async '!snow help'(msg) {
@@ -66,14 +115,21 @@ const commands = {
             [
                 '*Verbier Snow Bot*',
                 '',
+                '*Images*',
                 '!! - Current live image',
-                '!snow weather - Weather',
                 '!snow 8am - Today 8 AM',
                 '!snow noon - Today noon',
                 '!snow 15:00 - Today at time',
                 '!snow 11-20 - Date at noon',
                 '!snow 11-20 8am - Date at time',
-                '!snow chatid - Get chat ID',
+                '',
+                '*Weather*',
+                '!snow weather - Current weather',
+                '',
+                '*Subscriptions*',
+                '!snow subscribe - Get daily updates',
+                '!snow unsubscribe - Stop daily updates',
+                '!snow status - Check subscription',
             ].join('\n'),
         );
     },
@@ -83,6 +139,9 @@ const commands = {
 commands['!verbier 8am'] = commands['!snow 8am'];
 commands['!verbier noon'] = commands['!snow noon'];
 commands['!verbier weather'] = commands['!snow weather'];
+commands['!verbier subscribe'] = commands['!snow subscribe'];
+commands['!verbier unsubscribe'] = commands['!snow unsubscribe'];
+commands['!verbier status'] = commands['!snow status'];
 commands['!verbier chatid'] = commands['!snow chatid'];
 commands['!verbier help'] = commands['!snow help'];
 

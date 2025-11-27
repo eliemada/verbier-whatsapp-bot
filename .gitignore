@@ -12,6 +12,9 @@ data/
 .env
 .env.local
 
+# Chat subscriptions (persisted data)
+.chats.json
+
 # OS
 .DS_Store
 Thumbs.db

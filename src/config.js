@@ -1,3 +1,9 @@
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+
+// Use data dir if exists (Docker), otherwise current dir
+const DATA_DIR = process.env.DATA_DIR || '.';
+const CHATS_FILE = `${DATA_DIR}/.chats.json`;
+
 export const CONFIG = Object.freeze({
     feedId: 'fe5nsqhtejqi',
     teleportApi: 'https://video.teleport.io/api/v2',
@@ -13,7 +19,57 @@ export const CONFIG = Object.freeze({
     },
 });
 
-export const CHAT_IDS =
-    process.env.WHATSAPP_CHAT_IDS?.split(',')
-        .map(id => id.trim())
-        .filter(Boolean) ?? [];
+/**
+ * Load chat IDs from file, fallback to env var.
+ */
+function loadChatIds() {
+    if (existsSync(CHATS_FILE)) {
+        try {
+            const data = JSON.parse(readFileSync(CHATS_FILE, 'utf-8'));
+            return data.chatIds ?? [];
+        } catch {
+            return [];
+        }
+    }
+    // Fallback to env var for initial setup
+    return (
+        process.env.WHATSAPP_CHAT_IDS?.split(',')
+            .map(id => id.trim())
+            .filter(Boolean) ?? []
+    );
+}
+
+function saveChatIds(chatIds) {
+    writeFileSync(CHATS_FILE, JSON.stringify({ chatIds }, null, 2));
+}
+
+// Mutable chat IDs list
+const chatIds = loadChatIds();
+
+export const chatManager = {
+    getAll: () => [...chatIds],
+
+    add: chatId => {
+        if (!chatIds.includes(chatId)) {
+            chatIds.push(chatId);
+            saveChatIds(chatIds);
+            return true;
+        }
+        return false;
+    },
+
+    remove: chatId => {
+        const index = chatIds.indexOf(chatId);
+        if (index > -1) {
+            chatIds.splice(index, 1);
+            saveChatIds(chatIds);
+            return true;
+        }
+        return false;
+    },
+
+    has: chatId => chatIds.includes(chatId),
+};
+
+// For backward compatibility
+export const CHAT_IDS = chatIds;

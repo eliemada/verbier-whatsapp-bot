@@ -25,7 +25,8 @@ RUN npm ci --omit=dev
 COPY bot.js ./
 COPY src/ ./src/
 
-# Create volume mount point for WhatsApp session
+# Create volume mount points for persistent data
 VOLUME /app/.wwebjs_auth
+VOLUME /app/data
 
 CMD ["node", "bot.js"]
