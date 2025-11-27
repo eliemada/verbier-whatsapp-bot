@@ -25,8 +25,9 @@ const client = new Client({
 });
 
 client.on('qr', qr => {
-    log.info('Scan QR code:');
+    log.info('QR code received, displaying...');
     qrcode.generate(qr, { small: true });
+    console.log(''); // Flush output
 });
 
 client.on('ready', () => {
