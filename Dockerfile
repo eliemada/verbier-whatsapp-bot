@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM node:24-slim
 
 # Install chromium for puppeteer (required by whatsapp-web.js)
 RUN apt-get update && apt-get install -y \
