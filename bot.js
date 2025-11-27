@@ -21,7 +21,16 @@ import { handleMessage } from './src/commands.js';
 
 const client = new Client({
     authStrategy: new LocalAuth(),
-    puppeteer: { headless: true, args: ['--no-sandbox'] },
+    puppeteer: {
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-software-rasterizer',
+        ],
+    },
 });
 
 client.on('qr', qr => {
@@ -29,6 +38,15 @@ client.on('qr', qr => {
     qrcode.generate(qr, { small: true });
     console.log(''); // Flush output
 });
+
+// Pairing code authentication (alternative to QR)
+const PHONE_NUMBER = process.env.PHONE_NUMBER;
+if (PHONE_NUMBER) {
+    client.on('loading_screen', async () => {
+        const code = await client.requestPairingCode(PHONE_NUMBER);
+        log.info(`Pairing code for ${PHONE_NUMBER}: ${code}`);
+    });
+}
 
 client.on('ready', () => {
     log.info('WhatsApp bot ready');
@@ -110,4 +128,11 @@ function setupSchedule() {
 
 log.info('Starting Verbier bot...');
 log.info(`Feed: ${CONFIG.feedId}`);
-client.initialize();
+
+client.on('loading_screen', (percent, message) => {
+    log.info(`Loading: ${percent}% - ${message}`);
+});
+
+client.initialize().catch(err => {
+    log.error('Failed to initialize:', err.message);
+});

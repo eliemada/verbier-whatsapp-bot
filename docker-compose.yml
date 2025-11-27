@@ -3,11 +3,13 @@ services:
         build: .
         container_name: verbier-whatsapp-bot
         restart: unless-stopped
+        shm_size: '1gb'
         environment:
             - DATA_DIR=/app/data
+            # For pairing code auth (instead of QR), set your phone number:
+            # - PHONE_NUMBER=41791234567
         volumes:
-            - ./data/auth:/app/.wwebjs_auth
             - ./data:/app/data
-        # For first-time QR code scanning, run with:
-        # docker compose up (without -d) to see the QR code
-        # After scanning, restart with: docker compose up -d
+            - ./data:/app/.wwebjs_auth
+        # For first-time setup, run: docker compose up
+        # After auth, run detached: docker compose up -d

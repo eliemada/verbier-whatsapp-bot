@@ -63,20 +63,51 @@ npm run format       # Format code
 ## Docker
 
 ```bash
-# First run - see QR code
+# First run - see QR/pairing code
 docker compose up
 
-# After scanning QR, run detached
+# After auth, run detached
 docker compose up -d
 
 # View logs
 docker compose logs -f
 ```
 
-Persistent data stored in `./data/`:
+### Pairing Code Auth (recommended for Docker)
+
+Instead of scanning a QR code, you can link with a phone number:
+
+1. Set your phone number in `docker-compose.yml`:
+    ```yaml
+    environment:
+        - PHONE_NUMBER=41791234567 # No + prefix
+    ```
+2. Run `docker compose up` and watch for: `Pairing code: ABCD-EFGH`
+3. On phone: WhatsApp → Linked Devices → Link a Device → **Link with phone number** → Enter code
+
+### Unraid
+
+Use the Unraid-specific compose file:
+
+```bash
+docker compose -f docker-compose.unraid.yml up
+```
+
+Or manually in Unraid:
+
+1. Add container from Docker Hub: `ghcr.io/eliemada/verbier-whatsapp-bot:latest`
+2. Set paths:
+    - `/app/data` → `/mnt/user/appdata/verbier-bot`
+    - `/app/.wwebjs_auth` → `/mnt/user/appdata/verbier-bot`
+3. Set environment:
+    - `DATA_DIR=/app/data`
+    - `PHONE_NUMBER=41791234567` (optional, for pairing code auth)
+4. Set `--shm-size=1g` in extra parameters
+
+Persistent data stored in appdata:
 
 - WhatsApp session auth
-- Chat subscriptions
+- Chat subscriptions (`.chats.json`)
 
 ## Requirements
 
