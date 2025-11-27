@@ -30,30 +30,19 @@ WhatsApp bot that sends webcam images from Verbier with real-time weather data f
 # Install dependencies
 npm install
 
-# Copy env template and add your chat IDs
-cp .env.example .env
-
 # Run the bot
 npm start
 ```
 
 On first run, scan the QR code with WhatsApp to authenticate.
 
-### Getting Chat IDs
+### Subscribe to Daily Updates
 
 1. Start the bot and scan QR
-2. Send `!snow chatid` in any chat/group
-3. Add the returned ID to `.env`:
+2. In any chat/group, send `!snow subscribe`
+3. That's it! The chat will receive daily updates at 8 AM and noon.
 
-```env
-WHATSAPP_CHAT_IDS=120363418246025671@g.us
-```
-
-Multiple groups (comma-separated):
-
-```env
-WHATSAPP_CHAT_IDS=123@g.us,456@g.us
-```
+Use `!snow unsubscribe` to stop receiving updates.
 
 ## Development
 

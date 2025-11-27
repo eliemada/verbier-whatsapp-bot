@@ -20,7 +20,7 @@ export const CONFIG = Object.freeze({
 });
 
 /**
- * Load chat IDs from file, fallback to env var.
+ * Load chat IDs from file.
  */
 function loadChatIds() {
     if (existsSync(CHATS_FILE)) {
@@ -31,12 +31,7 @@ function loadChatIds() {
             return [];
         }
     }
-    // Fallback to env var for initial setup
-    return (
-        process.env.WHATSAPP_CHAT_IDS?.split(',')
-            .map(id => id.trim())
-            .filter(Boolean) ?? []
-    );
+    return [];
 }
 
 function saveChatIds(chatIds) {
@@ -70,6 +65,3 @@ export const chatManager = {
 
     has: chatId => chatIds.includes(chatId),
 };
-
-// For backward compatibility
-export const CHAT_IDS = chatIds;
