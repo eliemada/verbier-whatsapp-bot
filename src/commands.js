@@ -56,8 +56,7 @@ const commands = {
     },
 
     async '!snow subscribe'(msg) {
-        const chat = await msg.getChat();
-        const chatId = chat.id._serialized;
+        const chatId = msg.from;
 
         if (chatManager.has(chatId)) {
             await msg.reply('This chat is already subscribed to daily updates.');
@@ -68,12 +67,11 @@ const commands = {
         await msg.reply(
             `✅ Subscribed!\n\nThis chat will now receive daily updates at 8 AM and noon.\n\nUse \`!snow unsubscribe\` to stop.`,
         );
-        log.info(`Chat subscribed: ${chat.name} (${chatId})`);
+        log.info(`Chat subscribed: ${chatId}`);
     },
 
     async '!snow unsubscribe'(msg) {
-        const chat = await msg.getChat();
-        const chatId = chat.id._serialized;
+        const chatId = msg.from;
 
         if (!chatManager.has(chatId)) {
             await msg.reply('This chat is not subscribed to daily updates.');
@@ -82,12 +80,11 @@ const commands = {
 
         chatManager.remove(chatId);
         await msg.reply(`❌ Unsubscribed.\n\nThis chat will no longer receive daily updates.`);
-        log.info(`Chat unsubscribed: ${chat.name} (${chatId})`);
+        log.info(`Chat unsubscribed: ${chatId}`);
     },
 
     async '!snow status'(msg) {
-        const chat = await msg.getChat();
-        const chatId = chat.id._serialized;
+        const chatId = msg.from;
         const isSubscribed = chatManager.has(chatId);
         const totalChats = chatManager.getAll().length;
 
@@ -106,8 +103,7 @@ const commands = {
     },
 
     async '!snow chatid'(msg) {
-        const chat = await msg.getChat();
-        await msg.reply(`*Chat ID:* \`${chat.id._serialized}\``);
+        await msg.reply(`*Chat ID:* \`${msg.from}\``);
     },
 
     async '!snow help'(msg) {
@@ -149,7 +145,15 @@ commands['!verbier help'] = commands['!snow help'];
  * Handle incoming message.
  */
 export async function handleMessage(msg) {
-    const body = msg.body.toLowerCase().trim();
+    const body = msg.body?.toLowerCase().trim();
+
+    // Skip non-commands early
+    if (
+        !body ||
+        (!body.startsWith('!!') && !body.startsWith('!snow') && !body.startsWith('!verbier'))
+    ) {
+        return;
+    }
 
     try {
         // Direct command match
