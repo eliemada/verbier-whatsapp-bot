@@ -1,0 +1,10 @@
+node_modules
+.wwebjs_auth
+.wwebjs_cache
+.env
+.git
+.husky
+*.md
+.prettierrc
+eslint.config.js
+data

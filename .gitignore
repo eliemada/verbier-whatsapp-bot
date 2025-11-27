@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Docker data
+data/
+
 # WhatsApp session data
 .wwebjs_auth/
 .wwebjs_cache/

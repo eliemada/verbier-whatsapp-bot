@@ -1,0 +1,12 @@
+services:
+    verbier-bot:
+        build: .
+        container_name: verbier-whatsapp-bot
+        restart: unless-stopped
+        environment:
+            - WHATSAPP_CHAT_IDS=${WHATSAPP_CHAT_IDS}
+        volumes:
+            - ./data:/app/.wwebjs_auth
+        # For first-time QR code scanning, run with:
+        # docker compose up (without -d) to see the QR code
+        # After scanning, restart with: docker compose up -d

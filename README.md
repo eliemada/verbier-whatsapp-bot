@@ -6,23 +6,23 @@ WhatsApp bot that sends webcam images from Verbier with real-time weather data f
 
 - Sends live webcam images from Verbier ski resort (via [Teleport.io](https://teleport.io))
 - Includes weather from two MeteoSwiss stations:
-  - **Les Attelas (2734m)** - mountain/piste conditions
-  - **Montagnier (839m)** - valley conditions
+    - **Les Attelas (2734m)** - mountain/piste conditions
+    - **Montagnier (839m)** - valley conditions
 - Scheduled daily updates at 8 AM and noon (Europe/Zurich)
 - On-demand commands for current or historical images
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `!!` | Current live image + weather |
-| `!snow weather` | Weather only |
-| `!snow 8am` | Today's 8 AM image |
-| `!snow noon` | Today's noon image |
-| `!snow 15:00` | Today at specific time |
-| `!snow 11-20` | Historical date at noon |
+| Command           | Description                      |
+| ----------------- | -------------------------------- |
+| `!!`              | Current live image + weather     |
+| `!snow weather`   | Weather only                     |
+| `!snow 8am`       | Today's 8 AM image               |
+| `!snow noon`      | Today's noon image               |
+| `!snow 15:00`     | Today at specific time           |
+| `!snow 11-20`     | Historical date at noon          |
 | `!snow 11-20 8am` | Historical date at specific time |
-| `!snow chatid` | Get chat ID for config |
+| `!snow chatid`    | Get chat ID for config           |
 
 ## Setup
 
@@ -50,6 +50,7 @@ WHATSAPP_CHAT_IDS=120363418246025671@g.us
 ```
 
 Multiple groups (comma-separated):
+
 ```env
 WHATSAPP_CHAT_IDS=123@g.us,456@g.us
 ```
@@ -68,7 +69,22 @@ npm run format       # Format code
 - **Webcam**: [Teleport.io](https://teleport.io) - Verbier feed
 - **Weather**: [MeteoSwiss Open Data](https://www.meteoswiss.admin.ch/services-and-publications/service/open-data.html) - 10-minute updates
 
+## Docker (Unraid)
+
+```bash
+# First run - see QR code
+docker compose up
+
+# After scanning QR, run detached
+docker compose up -d
+
+# View logs
+docker compose logs -f
+```
+
+Session data persists in `./data/` directory.
+
 ## Requirements
 
-- Node.js >= 18
+- Node.js >= 18 (or Docker)
 - A WhatsApp account to run the bot
