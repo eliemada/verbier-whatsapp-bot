@@ -1,7 +1,7 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "lockFileMaintenance": {
-        "enabled": true
+        "enabled": false
     },
     "extends": ["config:recommended", ":dependencyDashboard"],
     "commitMessagePrefix": ":arrow_up: ",
