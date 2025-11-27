@@ -1,234 +1,503 @@
 /**
  * Verbier WhatsApp Bot
- *
- * Sends daily snow images from Verbier webcam at 8 AM and 12 PM.
- * Also responds to commands for on-demand images.
- *
- * Prerequisites:
- * 1. Start the Python API: uv run uvicorn server:app --port 3001
- * 2. Run this bot: npm start
+ * Sends daily snow images from Verbier webcam with MeteoSwiss weather data.
  */
 
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const cron = require('node-cron');
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth, MessageMedia } = pkg;
+import qrcode from 'qrcode-terminal';
+import cron from 'node-cron';
+import 'dotenv/config';
 
+// =============================================================================
 // Configuration
-const API_URL = 'http://localhost:3001';
+// =============================================================================
 
-// Set this to your group's chat ID (run !snow chatid in the group to find it)
-// Format: 123456789@g.us
-const TARGET_CHAT_ID = process.env.WHATSAPP_CHAT_ID || null;
-
-// Initialize WhatsApp client
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        headless: true,
-        args: ['--no-sandbox'],
-    }
+const CONFIG = Object.freeze({
+    feedId: 'fe5nsqhtejqi',
+    teleportApi: 'https://video.teleport.io/api/v2',
+    meteoSwissUrl: 'https://data.geo.admin.ch/ch.meteoschweiz.messwerte-aktuell/VQHA80.csv',
+    timezone: 'Europe/Zurich',
+    stations: {
+        ATT: { name: 'Les Attelas', altitude: 2734 },
+        MOB: { name: 'Montagnier', altitude: 839 },
+    },
+    schedule: {
+        morning: { hour: 8, minute: 0 },
+        noon: { hour: 12, minute: 0 },
+    },
 });
 
-// QR Code for login
-client.on('qr', (qr) => {
-    console.log('Scan this QR code with WhatsApp:');
+const CHAT_IDS =
+    process.env.WHATSAPP_CHAT_IDS?.split(',')
+        .map(id => id.trim())
+        .filter(Boolean) ?? [];
+
+// =============================================================================
+// Utilities
+// =============================================================================
+
+const log = {
+    info: (...args) => console.log(`[${new Date().toISOString()}]`, ...args),
+    error: (...args) => console.error(`[${new Date().toISOString()}] ERROR:`, ...args),
+};
+
+/**
+ * Creates a Date object for a specific time in Verbier timezone.
+ * @param {number} year
+ * @param {number} month - 1-indexed
+ * @param {number} day
+ * @param {number} hour
+ * @param {number} minute
+ * @returns {Date} UTC Date
+ */
+function createVerbierDateTime(year, month, day, hour, minute) {
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+    const localDate = new Date(dateStr);
+    const utcDate = new Date(`${dateStr}Z`);
+    const offset =
+        new Date(utcDate.toLocaleString('en-US', { timeZone: CONFIG.timezone })) - utcDate;
+    return new Date(localDate.getTime() - offset);
+}
+
+function getVerbierNow() {
+    return new Date(new Date().toLocaleString('en-US', { timeZone: CONFIG.timezone }));
+}
+
+/**
+ * Parses time string into hour and minute.
+ * Supports: "8am", "3pm", "15:00", "8:30"
+ * @param {string} timeStr
+ * @returns {{ hour: number, minute: number, label: string } | null}
+ */
+function parseTime(timeStr) {
+    if (!timeStr) return null;
+
+    // Handle HH:MM format
+    const hhmmMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+    if (hhmmMatch) {
+        const [, h, m] = hhmmMatch.map(Number);
+        if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+            return { hour: h, minute: m, label: timeStr };
+        }
+    }
+
+    // Handle 8am/3pm format
+    const ampmMatch = timeStr.match(/^(\d{1,2})(am|pm)$/i);
+    if (ampmMatch) {
+        let h = parseInt(ampmMatch[1], 10);
+        const isPM = ampmMatch[2].toLowerCase() === 'pm';
+        if (isPM && h !== 12) h += 12;
+        if (!isPM && h === 12) h = 0;
+        if (h >= 0 && h <= 23) {
+            return { hour: h, minute: 0, label: timeStr.toUpperCase() };
+        }
+    }
+
+    // Handle named times
+    if (timeStr === 'noon' || timeStr === '12pm') {
+        return { hour: 12, minute: 0, label: 'noon' };
+    }
+
+    return null;
+}
+
+/**
+ * Parses date string into YYYY-MM-DD format.
+ * Supports: "11-20" (MM-DD), "2025-11-20" (YYYY-MM-DD)
+ * @param {string} dateStr
+ * @returns {string | null}
+ */
+function parseDate(dateStr) {
+    if (/^\d{2}-\d{2}$/.test(dateStr)) {
+        return `${new Date().getFullYear()}-${dateStr}`;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr;
+    }
+    return null;
+}
+
+// =============================================================================
+// Teleport.io API
+// =============================================================================
+
+/**
+ * Fetches an image from Teleport.io.
+ * @param {number | null} frametime - Unix timestamp in seconds, or null for current
+ * @returns {Promise<Buffer>}
+ */
+async function fetchImage(frametime = null) {
+    const url = new URL(`${CONFIG.teleportApi}/frame-get`);
+    url.searchParams.set('feedid', CONFIG.feedId);
+    url.searchParams.set('sizecode', 'x768');
+    if (frametime) url.searchParams.set('frametime', String(frametime));
+
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Teleport API error: ${response.status}`);
+    }
+    return Buffer.from(await response.arrayBuffer());
+}
+
+async function getCurrentImage() {
+    return fetchImage();
+}
+
+/**
+ * Gets image at a specific time.
+ * @param {number} hour
+ * @param {number} minute
+ * @param {string | null} dateStr - YYYY-MM-DD format
+ */
+async function getImageAt(hour, minute = 0, dateStr = null) {
+    const now = getVerbierNow();
+    const [year, month, day] = dateStr
+        ? dateStr.split('-').map(Number)
+        : [now.getFullYear(), now.getMonth() + 1, now.getDate()];
+
+    let target = createVerbierDateTime(year, month, day, hour, minute);
+
+    // If time is in the future and no specific date, use yesterday
+    if (!dateStr && target > new Date()) {
+        target = new Date(target.getTime() - 86400000);
+    }
+
+    return fetchImage(Math.floor(target.getTime() / 1000));
+}
+
+// =============================================================================
+// MeteoSwiss API
+// =============================================================================
+
+/**
+ * @typedef {Object} StationData
+ * @property {number | null} temp
+ * @property {number | null} wind
+ * @property {number} precip
+ * @property {string} name
+ * @property {number} altitude
+ */
+
+/**
+ * @typedef {Object} WeatherData
+ * @property {StationData | null} mountain
+ * @property {StationData | null} valley
+ * @property {string} emoji
+ */
+
+/**
+ * Fetches current weather from MeteoSwiss.
+ * @returns {Promise<WeatherData | null>}
+ */
+async function getWeather() {
+    try {
+        const response = await fetch(CONFIG.meteoSwissUrl);
+        if (!response.ok) throw new Error(`MeteoSwiss API error: ${response.status}`);
+
+        const csv = await response.text();
+        const [headerLine, ...dataLines] = csv.trim().split('\n');
+        const headers = headerLine.split(';');
+
+        const col = {
+            temp: headers.indexOf('tre200s0'),
+            wind: headers.indexOf('fu3010z0'),
+            precip: headers.indexOf('rre150z0'),
+        };
+
+        const result = { mountain: null, valley: null, emoji: '⛰️' };
+
+        for (const [code, info] of Object.entries(CONFIG.stations)) {
+            const line = dataLines.find(l => l.startsWith(`${code};`));
+            if (!line) continue;
+
+            const values = line.split(';');
+            const temp = parseFloat(values[col.temp]);
+            const wind = parseFloat(values[col.wind]);
+            const precip = parseFloat(values[col.precip]) || 0;
+
+            const data = {
+                temp: Number.isFinite(temp) ? Math.round(temp) : null,
+                wind: Number.isFinite(wind) ? Math.round(wind) : null,
+                precip,
+                name: info.name,
+                altitude: info.altitude,
+            };
+
+            if (code === 'ATT') result.mountain = data;
+            if (code === 'MOB') result.valley = data;
+        }
+
+        result.emoji = getWeatherEmoji(result.mountain?.temp ?? 0, result.mountain?.precip ?? 0);
+        return result;
+    } catch (error) {
+        log.error('Weather fetch failed:', error.message);
+        return null;
+    }
+}
+
+function getWeatherEmoji(temp, precip) {
+    if (precip > 0 && temp <= 0) return '🌨️';
+    if (precip > 0) return '🌧️';
+    if (temp <= -10) return '🥶';
+    if (temp <= 0) return '❄️';
+    if (temp >= 25) return '☀️';
+    return '⛰️';
+}
+
+/**
+ * Formats weather data as a caption.
+ * @param {WeatherData | null} weather
+ * @param {string} title
+ */
+function formatCaption(weather, title) {
+    if (!weather) return title;
+
+    const lines = [`${weather.emoji} ${title}`, ''];
+
+    if (weather.mountain) {
+        lines.push(
+            `⛷️ *Pistes* (${weather.mountain.altitude}m)`,
+            `🌡️ ${weather.mountain.temp}°C  💨 ${weather.mountain.wind} km/h`,
+        );
+    }
+
+    if (weather.valley) {
+        lines.push(
+            '',
+            `🏘️ *Vallée* (${weather.valley.altitude}m)`,
+            `🌡️ ${weather.valley.temp}°C  💨 ${weather.valley.wind} km/h`,
+        );
+    }
+
+    return lines.join('\n');
+}
+
+// =============================================================================
+// WhatsApp Client
+// =============================================================================
+
+const client = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: { headless: true, args: ['--no-sandbox'] },
+});
+
+client.on('qr', qr => {
+    log.info('Scan QR code:');
     qrcode.generate(qr, { small: true });
 });
 
 client.on('ready', () => {
-    console.log('WhatsApp bot is ready!');
-    setupScheduledMessages();
+    log.info('WhatsApp bot ready');
+    setupSchedule();
 });
 
-client.on('authenticated', () => {
-    console.log('Authenticated successfully');
-});
-
-client.on('auth_failure', (msg) => {
-    console.error('Authentication failed:', msg);
-});
+client.on('authenticated', () => log.info('Authenticated'));
+client.on('auth_failure', msg => log.error('Auth failed:', msg));
 
 // =============================================================================
-// Image Fetching
+// Messaging
 // =============================================================================
 
-async function fetchImage(endpoint) {
-    const response = await fetch(`${API_URL}${endpoint}`);
-    if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-    }
-    const buffer = await response.arrayBuffer();
-    return Buffer.from(buffer);
-}
-
-async function getCurrentImage() {
-    return fetchImage('/image/current');
-}
-
-async function get8AMImage(date = null) {
-    const url = date ? `/image/8am?date=${date}` : '/image/8am';
-    return fetchImage(url);
-}
-
-async function getNoonImage(date = null) {
-    const url = date ? `/image/noon?date=${date}` : '/image/noon';
-    return fetchImage(url);
-}
-
-async function getImageAtTime(hour, minute = 0, date = null) {
-    let url = `/image/at?hour=${hour}&minute=${minute}`;
-    if (date) url += `&date=${date}`;
-    return fetchImage(url);
-}
-
-// =============================================================================
-// Sending Messages
-// =============================================================================
-
-async function sendImageToChat(chatId, imageBuffer, caption) {
-    if (!chatId) {
-        console.error('No TARGET_CHAT_ID configured. Run !snow chatid in your group to get it.');
-        return false;
-    }
-
+async function sendToChat(chatId, image, caption) {
     try {
         const chat = await client.getChatById(chatId);
-        const media = new MessageMedia('image/jpeg', imageBuffer.toString('base64'), 'verbier.jpg');
+        const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier.jpg');
         await chat.sendMessage(media, { caption });
-        console.log(`Sent image to ${chat.name}: ${caption}`);
+        log.info(`Sent to ${chat.name}`);
         return true;
     } catch (error) {
-        console.error(`Failed to send to chat ${chatId}:`, error.message);
+        log.error(`Failed to send to ${chatId}:`, error.message);
         return false;
     }
 }
 
-async function sendMorningUpdate() {
+async function broadcast(image, caption) {
+    if (!CHAT_IDS.length) {
+        log.error('No WHATSAPP_CHAT_IDS configured');
+        return;
+    }
+    await Promise.all(CHAT_IDS.map(id => sendToChat(id, image, caption)));
+}
+
+async function sendScheduledUpdate(hour, minute, title) {
     try {
-        const image = await get8AMImage();
+        const [image, weather] = await Promise.all([getImageAt(hour, minute), getWeather()]);
         const date = new Date().toLocaleDateString('en-CH');
-        await sendImageToChat(TARGET_CHAT_ID, image, `Good morning! Verbier at 8 AM - ${date}`);
+        await broadcast(image, formatCaption(weather, `${title} - ${date}`));
     } catch (error) {
-        console.error('Failed to send morning update:', error);
-    }
-}
-
-async function sendNoonUpdate() {
-    try {
-        const image = await getNoonImage();
-        const date = new Date().toLocaleDateString('en-CH');
-        await sendImageToChat(TARGET_CHAT_ID, image, `Noon update from Verbier! - ${date}`);
-    } catch (error) {
-        console.error('Failed to send noon update:', error);
+        log.error('Scheduled update failed:', error.message);
     }
 }
 
 // =============================================================================
-// Scheduled Messages
+// Schedule
 // =============================================================================
 
-function setupScheduledMessages() {
-    // 8 AM CET (7 AM UTC in winter, 6 AM UTC in summer)
-    // Using 7 AM UTC for simplicity - adjust as needed
-    cron.schedule('0 7 * * *', () => {
-        console.log('Sending 8 AM update...');
-        sendMorningUpdate();
-    }, { timezone: 'Europe/Zurich' });
+function setupSchedule() {
+    const { morning, noon } = CONFIG.schedule;
 
-    // 12 PM CET
-    cron.schedule('0 12 * * *', () => {
-        console.log('Sending noon update...');
-        sendNoonUpdate();
-    }, { timezone: 'Europe/Zurich' });
+    cron.schedule(
+        `${morning.minute} ${morning.hour} * * *`,
+        () => {
+            log.info('Sending morning update');
+            sendScheduledUpdate(morning.hour, morning.minute, 'Good morning! Verbier at 8 AM');
+        },
+        { timezone: CONFIG.timezone },
+    );
 
-    console.log('Scheduled messages set up:');
-    console.log('  - 8:00 AM CET: Morning update');
-    console.log('  - 12:00 PM CET: Noon update');
+    cron.schedule(
+        `${noon.minute} ${noon.hour} * * *`,
+        () => {
+            log.info('Sending noon update');
+            sendScheduledUpdate(noon.hour, noon.minute, 'Noon update from Verbier');
+        },
+        { timezone: CONFIG.timezone },
+    );
+
+    log.info(`Scheduled: ${morning.hour}:00 & ${noon.hour}:00 (${CONFIG.timezone})`);
+    log.info(`Target chats: ${CHAT_IDS.length || 'none'}`);
 }
 
 // =============================================================================
-// Command Handler
+// Command Handlers
 // =============================================================================
 
-client.on('message', async (msg) => {
-    const body = msg.body.toLowerCase().trim();
+const commands = {
+    async '!!'(msg) {
+        const [image, weather] = await Promise.all([getCurrentImage(), getWeather()]);
+        const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier.jpg');
+        await msg.reply(media, null, {
+            caption: formatCaption(weather, 'Current view from Verbier'),
+        });
+    },
 
-    // !snow - current image
-    if (body === '!snow' || body === '!verbier') {
-        try {
-            const image = await getCurrentImage();
-            const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier_now.jpg');
-            await msg.reply(media, null, { caption: 'Current view from Verbier' });
-        } catch (error) {
-            await msg.reply('Sorry, failed to fetch the image. Is the API running?');
-        }
-    }
+    async '!snow 8am'(msg) {
+        const image = await getImageAt(8, 0);
+        const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier_8am.jpg');
+        await msg.reply(media, null, { caption: 'Verbier at 8 AM today' });
+    },
 
-    // !snow 8am - today's 8 AM image
-    else if (body === '!snow 8am' || body === '!verbier 8am') {
-        try {
-            const image = await get8AMImage();
-            const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier_8am.jpg');
-            await msg.reply(media, null, { caption: 'Verbier at 8 AM today' });
-        } catch (error) {
-            await msg.reply('Sorry, failed to fetch the 8 AM image.');
-        }
-    }
+    async '!snow noon'(msg) {
+        const image = await getImageAt(12, 0);
+        const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier_noon.jpg');
+        await msg.reply(media, null, { caption: 'Verbier at noon today' });
+    },
 
-    // !snow noon - today's noon image
-    else if (body === '!snow noon' || body === '!verbier noon') {
-        try {
-            const image = await getNoonImage();
-            const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier_noon.jpg');
-            await msg.reply(media, null, { caption: 'Verbier at noon today' });
-        } catch (error) {
-            await msg.reply('Sorry, failed to fetch the noon image.');
-        }
-    }
-
-    // !snow history 2025-11-20 - image from specific date at noon
-    else if (body.startsWith('!snow history ') || body.startsWith('!verbier history ')) {
-        const parts = body.split(' ');
-        const date = parts[2]; // YYYY-MM-DD
-
-        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-            await msg.reply('Usage: !snow history YYYY-MM-DD\nExample: !snow history 2025-11-20');
+    async '!snow weather'(msg) {
+        const weather = await getWeather();
+        if (!weather) {
+            await msg.reply('Sorry, failed to fetch weather data.');
             return;
         }
 
-        try {
-            const image = await getNoonImage(date);
-            const media = new MessageMedia('image/jpeg', image.toString('base64'), `verbier_${date}.jpg`);
-            await msg.reply(media, null, { caption: `Verbier on ${date} at noon` });
-        } catch (error) {
-            await msg.reply(`Sorry, no image available for ${date}`);
+        const lines = [`*Verbier Weather* ${weather.emoji}`, ''];
+        if (weather.mountain) {
+            lines.push(
+                `⛷️ *Pistes* (${weather.mountain.altitude}m)`,
+                `🌡️ ${weather.mountain.temp}°C`,
+                `💨 ${weather.mountain.wind} km/h`,
+                '',
+            );
         }
-    }
+        if (weather.valley) {
+            lines.push(
+                `🏘️ *Vallée* (${weather.valley.altitude}m)`,
+                `🌡️ ${weather.valley.temp}°C`,
+                `💨 ${weather.valley.wind} km/h`,
+            );
+        }
+        lines.push('', '_Source: MeteoSwiss_');
+        await msg.reply(lines.join('\n'));
+    },
 
-    // !snow chatid - get this chat's ID (for configuration)
-    else if (body === '!snow chatid' || body === '!verbier chatid') {
+    async '!snow chatid'(msg) {
         const chat = await msg.getChat();
         await msg.reply(
-            `*Chat ID:* \`${chat.id._serialized}\`\n\n` +
-            `Add this to your .env file:\n` +
-            `WHATSAPP_CHAT_ID=${chat.id._serialized}`
+            `*Chat ID:* \`${chat.id._serialized}\`\n\nAdd to .env:\nWHATSAPP_CHAT_IDS=${chat.id._serialized}`,
         );
-    }
+    },
 
-    // !snow help
-    else if (body === '!snow help' || body === '!verbier help') {
+    async '!snow help'(msg) {
         await msg.reply(
-            '*Verbier Snow Bot Commands*\n\n' +
-            '!snow - Current live image\n' +
-            '!snow 8am - Today\'s 8 AM image\n' +
-            '!snow noon - Today\'s noon image\n' +
-            '!snow history YYYY-MM-DD - Image from a specific date\n' +
-            '!snow chatid - Get this chat\'s ID for scheduled messages\n' +
-            '!snow help - Show this help'
+            [
+                '*Verbier Snow Bot*',
+                '',
+                '!! - Current live image',
+                '!snow weather - Weather',
+                '!snow 8am - Today 8 AM',
+                '!snow noon - Today noon',
+                '!snow 15:00 - Today at time',
+                '!snow 11-20 - Date at noon',
+                '!snow 11-20 8am - Date at time',
+                '!snow chatid - Get chat ID',
+            ].join('\n'),
         );
+    },
+};
+
+// Aliases
+commands['!verbier 8am'] = commands['!snow 8am'];
+commands['!verbier noon'] = commands['!snow noon'];
+commands['!verbier weather'] = commands['!snow weather'];
+commands['!verbier chatid'] = commands['!snow chatid'];
+commands['!verbier help'] = commands['!snow help'];
+
+// =============================================================================
+// Message Router
+// =============================================================================
+
+client.on('message', async msg => {
+    const body = msg.body.toLowerCase().trim();
+
+    try {
+        // Direct command match
+        if (commands[body]) {
+            await commands[body](msg);
+            return;
+        }
+
+        // !snow HH:MM or !snow Xam/pm - today at time
+        const timeOnlyMatch = body.match(/^!(snow|verbier)\s+(\d{1,2}:\d{2}|\d{1,2}(?:am|pm))$/i);
+        if (timeOnlyMatch) {
+            const time = parseTime(timeOnlyMatch[2]);
+            if (time) {
+                const image = await getImageAt(time.hour, time.minute);
+                const media = new MessageMedia(
+                    'image/jpeg',
+                    image.toString('base64'),
+                    'verbier.jpg',
+                );
+                await msg.reply(media, null, { caption: `Verbier today at ${time.label}` });
+            }
+            return;
+        }
+
+        // !snow MM-DD [time] or !snow YYYY-MM-DD [time] - historical
+        const dateMatch = body.match(/^!(snow|verbier)\s+(\d{2,4}-\d{2}(?:-\d{2})?)\s*(.*)$/i);
+        if (dateMatch) {
+            const date = parseDate(dateMatch[2]);
+            if (!date) {
+                await msg.reply('Invalid date format. Use MM-DD or YYYY-MM-DD');
+                return;
+            }
+
+            const time = parseTime(dateMatch[3]) ?? { hour: 12, minute: 0, label: 'noon' };
+            const image = await getImageAt(time.hour, time.minute, date);
+            const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier.jpg');
+            await msg.reply(media, null, { caption: `Verbier on ${date} at ${time.label}` });
+            return;
+        }
+    } catch (error) {
+        log.error('Command error:', error.message);
+        await msg.reply('Sorry, something went wrong.');
     }
 });
 
-// Start the client
-console.log('Starting WhatsApp bot...');
+// =============================================================================
+// Start
+// =============================================================================
+
+log.info('Starting Verbier bot...');
+log.info(`Feed: ${CONFIG.feedId}`);
 client.initialize();

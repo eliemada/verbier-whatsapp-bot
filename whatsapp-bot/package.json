@@ -1,15 +1,32 @@
 {
-  "name": "verbier-whatsapp-bot",
-  "version": "1.0.0",
-  "description": "WhatsApp bot that sends Verbier webcam images",
-  "main": "bot.js",
-  "scripts": {
-    "start": "node -r dotenv/config bot.js"
-  },
-  "dependencies": {
-    "whatsapp-web.js": "^1.34.2",
-    "qrcode-terminal": "^0.12.0",
-    "node-cron": "^3.0.3",
-    "dotenv": "^16.4.5"
-  }
+    "name": "verbier-whatsapp-bot",
+    "version": "2.0.0",
+    "description": "WhatsApp bot for Verbier webcam images with MeteoSwiss weather",
+    "type": "module",
+    "main": "bot.js",
+    "scripts": {
+        "start": "node bot.js",
+        "dev": "node --watch bot.js",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
+    },
+    "dependencies": {
+        "dotenv": "^16.4.5",
+        "node-cron": "^3.0.3",
+        "qrcode-terminal": "^0.12.0",
+        "whatsapp-web.js": "^1.26.0"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.39.1",
+        "eslint": "^9.39.1",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-prettier": "^5.5.4",
+        "globals": "^16.5.0",
+        "prettier": "^3.7.1"
+    }
 }
