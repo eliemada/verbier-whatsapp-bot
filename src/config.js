@@ -6,7 +6,7 @@ const CHATS_FILE = `${DATA_DIR}/.chats.json`;
 
 export const CONFIG = Object.freeze({
     feedId: 'fe5nsqhtejqi',
-    teleportApi: 'https://video.teleport.io/api/v2',
+    teleportApi: 'https://www.teleport.io/api/v2',
     meteoSwissUrl: 'https://data.geo.admin.ch/ch.meteoschweiz.messwerte-aktuell/VQHA80.csv',
     timezone: 'Europe/Zurich',
     stations: {

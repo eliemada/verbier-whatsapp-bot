@@ -11,7 +11,7 @@ import 'dotenv/config';
 
 import { CONFIG, chatManager } from './src/config.js';
 import { log } from './src/logger.js';
-import { getImageAt } from './src/teleport.js';
+import { getCurrentImage } from './src/teleport.js';
 import { getWeather, formatCaption } from './src/weather.js';
 import { handleMessage } from './src/commands.js';
 
@@ -75,7 +75,9 @@ async function broadcast(image, caption) {
 
 async function sendScheduledUpdate(hour, minute, title) {
     try {
-        const [image, weather] = await Promise.all([getImageAt(hour, minute), getWeather()]);
+        // Use getCurrentImage for live feed instead of getImageAt
+        // getImageAt with exact current time fails because the frame isn't available yet
+        const [image, weather] = await Promise.all([getCurrentImage(), getWeather()]);
         const date = new Date().toLocaleDateString('en-CH');
         await broadcast(image, formatCaption(weather, `${title} - ${date}`));
     } catch (error) {

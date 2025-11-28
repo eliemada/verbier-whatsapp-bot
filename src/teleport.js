@@ -6,10 +6,9 @@ import { createVerbierDateTime, getVerbierNow } from './utils.js';
  * @param {string|null} frametime - ISO 8601 timestamp (e.g., "2025-11-27T12:00:00Z")
  */
 async function fetchImage(frametime = null) {
-    const url = new URL(`${CONFIG.teleportApi}/frame-get`);
-    url.searchParams.set('feedid', CONFIG.feedId);
-    url.searchParams.set('sizecode', 'x768');
-    if (frametime) url.searchParams.set('frametime', frametime);
+    // Build URL manually to avoid URL-encoding the frametime colons
+    let url = `${CONFIG.teleportApi}/frame-get?feedid=${CONFIG.feedId}&sizecode=x768`;
+    if (frametime) url += `&frametime=${frametime}`;
 
     const response = await fetch(url);
     if (!response.ok) {
