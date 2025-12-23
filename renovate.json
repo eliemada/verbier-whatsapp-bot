@@ -10,15 +10,20 @@
     "packageRules": [
         {
             "groupName": "💬 WhatsApp & bot core",
-            "matchPackagePatterns": ["^whatsapp-web", "^qrcode"]
+            "matchPackageNames": ["/^whatsapp-web/", "/^qrcode/"]
         },
         {
             "groupName": "⏰ Scheduling & config",
-            "matchPackagePatterns": ["^node-cron", "^dotenv"]
+            "matchPackageNames": ["/^node-cron/", "/^dotenv/"]
         },
         {
             "groupName": "🔍 Linting & formatting",
-            "matchPackagePatterns": ["^eslint", "^prettier", "^globals", "^@eslint"]
+            "matchPackageNames": [
+                "/^eslint/",
+                "/^prettier/",
+                "/^globals/",
+                "/^@eslint/"
+            ]
         },
         {
             "groupName": "🚨 Major version updates",
