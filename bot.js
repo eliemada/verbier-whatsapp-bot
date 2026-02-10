@@ -115,6 +115,24 @@ function setupSchedule() {
 }
 
 // =============================================================================
+// Graceful Shutdown
+// =============================================================================
+
+async function shutdown(signal) {
+    log.info(`Received ${signal}, shutting down...`);
+    try {
+        await client.destroy();
+        log.info('WhatsApp client closed');
+    } catch (error) {
+        log.error('Error during shutdown:', error.message);
+    }
+    process.exit(0);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// =============================================================================
 // Start
 // =============================================================================
 
