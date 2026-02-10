@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Verbier WhatsApp Bot</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+        <meta
+            name="description"
+            content="WhatsApp bot for Verbier webcam images with MeteoSwiss weather"
+        />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css" />
+        <style>
+            :root {
+                --theme-color: #3498db;
+                --theme-color-dark: #2980b9;
+            }
+            .sidebar-nav > ul > li > a {
+                font-weight: 600;
+            }
+            .markdown-section code {
+                border-radius: 4px;
+            }
+            .markdown-section pre {
+                border-radius: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app"></div>
+        <script>
+            window.$docsify = {
+                name: 'Verbier Bot',
+                repo: 'eliemada/verbier-whatsapp-bot',
+                loadSidebar: true,
+                subMaxLevel: 3,
+                auto2top: true,
+                search: {
+                    placeholder: 'Search...',
+                    noData: 'No results',
+                    depth: 3,
+                },
+                copyCode: {
+                    buttonText: 'Copy',
+                    successText: 'Copied',
+                },
+            };
+        </script>
+        <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
+        <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-yaml.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
+        <!-- Mermaid for diagrams -->
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+        <script>
+            mermaid.initialize({ startOnLoad: false, theme: 'default' });
+            window.$docsify.plugins = [].concat(window.$docsify.plugins || [], function (hook) {
+                hook.afterEach(function (html) {
+                    return html.replace(
+                        /<pre><code class="lang-mermaid">([\s\S]*?)<\/code><\/pre>/g,
+                        '<div class="mermaid">$1</div>',
+                    );
+                });
+                hook.doneEach(function () {
+                    mermaid.run();
+                });
+            });
+        </script>
+    </body>
+</html>
