@@ -18,11 +18,28 @@
         },
         {
             "groupName": "🔍 Linting & formatting",
-            "matchPackageNames": ["/^eslint/", "/^prettier/", "/^globals/", "/^@eslint/"]
+            "matchPackageNames": ["/^eslint/", "/^prettier/", "/^globals/", "/^@eslint/"],
+            "automerge": true
+        },
+        {
+            "groupName": "🧪 Testing",
+            "matchPackageNames": ["/^vitest/"],
+            "automerge": true
+        },
+        {
+            "groupName": "🔧 Dev tooling",
+            "matchPackageNames": ["/^husky/", "/^lint-staged/"],
+            "automerge": true
+        },
+        {
+            "description": "Automerge minor and patch updates",
+            "matchUpdateTypes": ["minor", "patch"],
+            "automerge": true
         },
         {
             "groupName": "🚨 Major version updates",
             "matchUpdateTypes": ["major"],
+            "automerge": false,
             "dependencyDashboardApproval": true
         }
     ]
