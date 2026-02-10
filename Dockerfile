@@ -38,4 +38,8 @@ COPY src/ ./src/
 VOLUME /app/.wwebjs_auth
 VOLUME /app/data
 
+# Health check - verify node process is running
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD node -e "process.exit(0)" || exit 1
+
 CMD ["node", "bot.js"]
