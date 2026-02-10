@@ -24,7 +24,16 @@
             .markdown-section pre {
                 border-radius: 8px;
             }
+            .mermaid {
+                text-align: center;
+                margin: 1em 0;
+            }
         </style>
+        <!-- Mermaid must load BEFORE docsify -->
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+        <script>
+            mermaid.initialize({ startOnLoad: false, theme: 'default' });
+        </script>
     </head>
     <body>
         <div id="app"></div>
@@ -44,6 +53,23 @@
                     buttonText: 'Copy',
                     successText: 'Copied',
                 },
+                markdown: {
+                    renderer: {
+                        code: function (code, lang) {
+                            if (lang === 'mermaid') {
+                                return '<div class="mermaid">' + code + '</div>';
+                            }
+                            return this.origin.code.apply(this, arguments);
+                        },
+                    },
+                },
+                plugins: [
+                    function (hook) {
+                        hook.doneEach(function () {
+                            mermaid.run({ querySelector: '.mermaid' });
+                        });
+                    },
+                ],
             };
         </script>
         <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
@@ -52,21 +78,6 @@
         <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-yaml.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
-        <!-- Mermaid for diagrams -->
-        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-        <script>
-            mermaid.initialize({ startOnLoad: false, theme: 'default' });
-            window.$docsify.plugins = [].concat(window.$docsify.plugins || [], function (hook) {
-                hook.afterEach(function (html) {
-                    return html.replace(
-                        /<pre><code class="lang-mermaid">([\s\S]*?)<\/code><\/pre>/g,
-                        '<div class="mermaid">$1</div>',
-                    );
-                });
-                hook.doneEach(function () {
-                    mermaid.run();
-                });
-            });
-        </script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
     </body>
 </html>
