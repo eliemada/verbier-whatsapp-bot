@@ -9,6 +9,7 @@
         "dev": "node --watch bot.js",
         "test": "vitest run",
         "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "format": "prettier --write .",
@@ -35,6 +36,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^10.0.0",
+        "@vitest/coverage-v8": "^4.0.0",
         "eslint": "^10.0.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-prettier": "^5.5.4",
