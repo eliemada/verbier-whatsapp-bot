@@ -1,3 +1,6 @@
+## Generic NAS deployment (Synology, QNAP, TrueNAS, etc.)
+## Adjust the volume path to match your NAS structure
+
 services:
     verbier-bot:
         image: ghcr.io/eliemada/verbier-whatsapp-bot:latest
@@ -7,8 +10,12 @@ services:
         environment:
             - DATA_DIR=/app/data
         volumes:
-            - /mnt/user/appdata/verbier-bot:/app/data
-            - /mnt/user/appdata/verbier-bot:/app/.wwebjs_auth
+            # Adjust this path for your NAS:
+            # Synology: /volume1/docker/verbier-bot
+            # QNAP: /share/Container/verbier-bot
+            # TrueNAS: /mnt/pool/apps/verbier-bot
+            - ./verbier-bot-data:/app/data
+            - ./verbier-bot-data:/app/.wwebjs_auth
         labels:
             - 'com.centurylinklabs.watchtower.enable=true'
 
@@ -29,5 +36,8 @@ services:
             - WATCHTOWER_INCLUDE_STOPPED=true
             # Revive stopped containers if updated
             - WATCHTOWER_REVIVE_STOPPED=true
-            # Timezone for logging
+            # Timezone (adjust for your location)
             - TZ=Europe/Zurich
+            # Optional: Send notifications on update
+            # - WATCHTOWER_NOTIFICATIONS=slack
+            # - WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL=https://hooks.slack.com/...

@@ -73,25 +73,47 @@ docker compose up -d
 docker compose logs -f
 ```
 
-### Unraid
+### NAS Deployment (with Auto-Updates)
 
-Use the Unraid-specific compose file:
+The compose files include [Watchtower](https://containrrr.dev/watchtower/) for automatic updates. When a new image is pushed to GitHub, Watchtower pulls it and restarts the container.
+
+**Unraid:**
 
 ```bash
-docker compose -f docker-compose.unraid.yml up
+docker compose -f docker-compose.unraid.yml up -d
 ```
 
-Or manually in Unraid:
+**Other NAS (Synology, QNAP, TrueNAS):**
 
-1. Add container from Docker Hub: `ghcr.io/eliemada/verbier-whatsapp-bot:latest`
+```bash
+# Edit docker-compose.nas.yml to set your volume path first
+docker compose -f docker-compose.nas.yml up -d
+```
+
+**Manual Unraid setup:**
+
+1. Add container: `ghcr.io/eliemada/verbier-whatsapp-bot:latest`
 2. Set paths:
     - `/app/data` → `/mnt/user/appdata/verbier-bot`
     - `/app/.wwebjs_auth` → `/mnt/user/appdata/verbier-bot`
-3. Set environment:
-    - `DATA_DIR=/app/data`
+3. Set environment: `DATA_DIR=/app/data`
 4. Set `--shm-size=1g` in extra parameters
+5. Add label: `com.centurylinklabs.watchtower.enable=true`
 
-Persistent data stored in appdata:
+### Auto-Updates
+
+Watchtower is included in the NAS compose files:
+
+- Checks for new images every 5 minutes
+- Only updates containers with the watchtower label
+- Cleans up old images automatically
+- Logs updates with Europe/Zurich timezone
+
+To disable auto-updates, remove the `watchtower` service from the compose file.
+
+### Persistent Data
+
+Stored in appdata:
 
 - WhatsApp session auth
 - Chat subscriptions (`.chats.json`)
