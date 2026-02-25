@@ -3,6 +3,8 @@
  * Sends daily snow images from Verbier webcam with MeteoSwiss weather data.
  */
 
+import fs from 'fs';
+import path from 'path';
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth, MessageMedia } = pkg;
 import qrcode from 'qrcode-terminal';
@@ -14,6 +16,25 @@ import { log } from './src/logger.js';
 import { getCurrentImage } from './src/teleport.js';
 import { getWeather, formatCaption } from './src/weather.js';
 import { handleMessage } from './src/commands.js';
+
+// =============================================================================
+// Clean up stale Chromium lock files from previous crashes
+// =============================================================================
+
+const authDir = path.join(process.cwd(), '.wwebjs_auth');
+for (const lockName of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+    const lockFile = path.join(authDir, 'session', 'Default', lockName);
+    if (fs.existsSync(lockFile)) {
+        fs.unlinkSync(lockFile);
+        log.info(`Removed stale Chromium lock file: ${lockName}`);
+    }
+    // Also check one level up (varies by whatsapp-web.js version)
+    const altLock = path.join(authDir, 'session', lockName);
+    if (fs.existsSync(altLock)) {
+        fs.unlinkSync(altLock);
+        log.info(`Removed stale Chromium lock file: ${lockName}`);
+    }
+}
 
 // =============================================================================
 // WhatsApp Client

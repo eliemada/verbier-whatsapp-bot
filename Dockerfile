@@ -42,4 +42,4 @@ VOLUME /app/data
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD node -e "process.exit(0)" || exit 1
 
-CMD ["node", "bot.js"]
+CMD ["node", "--disable-warning=DEP0040", "bot.js"]
