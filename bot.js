@@ -5,7 +5,7 @@
 
 import path from 'path';
 import pkg from 'whatsapp-web.js';
-const { Client, LocalAuth, MessageMedia } = pkg;
+const { Client, LocalAuth } = pkg;
 import qrcode from 'qrcode-terminal';
 import cron from 'node-cron';
 import 'dotenv/config';
@@ -17,6 +17,7 @@ import { getWeather, formatCaption } from './src/weather.js';
 import { handleMessage } from './src/commands.js';
 import { cleanupBrowserLocks } from './src/session.js';
 import { createControlServer } from './src/control.js';
+import { getChatSummary, sendImage } from './src/messaging.js';
 
 // =============================================================================
 // Clean up stale Chromium lock files from previous crashes
@@ -95,8 +96,7 @@ const control = createControlServer({
     getQr: () => pairingQr,
     getChat: async id => {
         if (!ready) throw new Error('WhatsApp is not connected');
-        const chat = await client.getChatById(id);
-        return { id: chat.id._serialized, name: chat.name, isGroup: chat.isGroup };
+        return getChatSummary(client, id);
     },
     sendUpdate: async (chatId, title = 'Verbier bot test — current view') => {
         const [image, weather] = await Promise.all([getCurrentImage(), getWeather()]);
@@ -121,15 +121,8 @@ control.listen(CONFIG.controlPort, '127.0.0.1');
 // =============================================================================
 
 async function sendToChat(chatId, image, caption) {
-    const chat = await client.getChatById(chatId);
-    const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier.jpg');
-    const message = await chat.sendMessage(media, {
-        caption,
-        sendSeen: false,
-        waitUntilMsgSent: true,
-    });
-    if (!message) throw new Error('WhatsApp did not return a sent message');
-    log.info(`Sent to ${chat.name}: ${message.id._serialized} (ack: ${message.ack})`);
+    const message = await sendImage(client, chatId, image, caption);
+    log.info(`Sent to ${chatId}: ${message.id._serialized} (ack: ${message.ack})`);
     return message;
 }
 
