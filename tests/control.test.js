@@ -24,6 +24,25 @@ afterEach(async () => {
 });
 
 describe('operator control', () => {
+    it('stays healthy while paused but refuses an operator send', async () => {
+        callbacks.getStatus.mockResolvedValue({
+            ready: true,
+            active: false,
+            startsAt: '2026-11-15T07:00:00.000Z',
+        });
+        expect((await fetch(`${baseUrl}/health`)).status).toBe(200);
+        const response = await fetch(`${baseUrl}/send`, {
+            method: 'POST',
+            body: JSON.stringify({ chatId: '12345@g.us' }),
+        });
+        expect(response.status).toBe(409);
+        expect(await response.json()).toEqual({
+            error: 'Bot is paused',
+            startsAt: '2026-11-15T07:00:00.000Z',
+        });
+        expect(callbacks.sendUpdate).not.toHaveBeenCalled();
+    });
+
     it('marks an unpaired client unhealthy and refuses to send', async () => {
         callbacks.getStatus.mockResolvedValue({ ready: false, pairingRequired: true });
         expect((await fetch(`${baseUrl}/health`)).status).toBe(503);

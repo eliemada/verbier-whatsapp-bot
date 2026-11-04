@@ -27,8 +27,12 @@ export function createControlServer({ getStatus, getQr, getChat, sendUpdate, get
             if (request.method !== 'POST' || url.pathname !== '/send') {
                 return reply(404, { error: 'Not found' });
             }
-            if (!(await getStatus()).ready) {
+            const status = await getStatus();
+            if (!status.ready) {
                 return reply(503, { error: 'WhatsApp is not connected' });
+            }
+            if (status.active === false) {
+                return reply(409, { error: 'Bot is paused', startsAt: status.startsAt });
             }
             let body = '';
             for await (const chunk of request) {

@@ -8,11 +8,13 @@ import { handleMessage } from './src/commands.js';
 import { createControlServer } from './src/control.js';
 import { WahaClient } from './src/waha.js';
 import { createCommandHandler, createWebhookServer } from './src/webhooks.js';
+import { createActivation } from './src/activation.js';
 
 if (!CONFIG.wahaApiKey || !CONFIG.webhookSecret) {
     throw new Error('WAHA_API_KEY and WEBHOOK_SECRET must be set');
 }
 
+const activation = createActivation(CONFIG.startAt);
 const client = new WahaClient({
     baseUrl: CONFIG.wahaUrl,
     apiKey: CONFIG.wahaApiKey,
@@ -42,7 +44,7 @@ async function currentUpdate(chatId, title = 'Verbier bot test — current view'
 }
 
 const control = createControlServer({
-    getStatus: () => client.getStatus(),
+    getStatus: async () => ({ ...(await client.getStatus()), ...activation() }),
     getQr: () => client.getQr(),
     getChat: id => client.getChat(id),
     getDelivery: id => client.getDelivery(id),
@@ -55,12 +57,17 @@ const webhooks = createWebhookServer({
         session: CONFIG.wahaSession,
         dataDir: CONFIG.dataDir,
         handleMessage,
+        isActive: () => activation().active,
     }),
 });
 control.listen(CONFIG.controlPort, '127.0.0.1');
 webhooks.listen(CONFIG.webhookPort, '0.0.0.0');
 
 async function sendScheduledUpdate(title) {
+    if (!activation().active) {
+        log.info(`Scheduled update skipped; bot starts at ${activation().startsAt}`);
+        return;
+    }
     try {
         if (!(await client.getStatus()).ready) throw new Error('WhatsApp is not connected');
         const chatIds = chatManager.getAll();
@@ -128,6 +135,9 @@ for (const server of [control, webhooks]) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 log.info(`Verbier bot using WAHA (${CONFIG.wahaSession})`);
+if (!activation().active) {
+    log.info(`Bot paused until ${activation().startsAt}; reports and command replies disabled`);
+}
 log.info(
     `Scheduled: 08:00 & 12:00 (${CONFIG.timezone}); subscribed chats: ${chatManager.getAll().length}`,
 );

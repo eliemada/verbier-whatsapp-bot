@@ -49,6 +49,18 @@ const deliver = (payload, key = 'secret') =>
     });
 
 describe('WAHA webhooks', () => {
+    it('ignores commands while paused and accepts a new command after activation', async () => {
+        let active = false;
+        const receive = createCommandHandler({ ...options, isActive: () => active });
+        await receive(event());
+        expect(handleMessage).not.toHaveBeenCalled();
+        expect(client.sendImage).not.toHaveBeenCalled();
+        expect(client.sendText).not.toHaveBeenCalled();
+        active = true;
+        await receive(event({ id: 'after-season-start' }));
+        expect(handleMessage).toHaveBeenCalledTimes(1);
+    });
+
     it('rejects unauthenticated requests without executing commands', async () => {
         expect((await deliver(event(), 'wrong')).status).toBe(401);
         expect(handleMessage).not.toHaveBeenCalled();

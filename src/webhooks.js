@@ -5,7 +5,14 @@ import path from 'node:path';
 import { log } from './logger.js';
 
 /** Persist command IDs before processing so webhook redelivery cannot send twice. */
-export function createCommandHandler({ client, session, dataDir, handleMessage, now = Date.now }) {
+export function createCommandHandler({
+    client,
+    session,
+    dataDir,
+    handleMessage,
+    now = Date.now,
+    isActive = () => true,
+}) {
     const file = path.join(dataDir, '.handled-messages.json');
     const seen = new Set(existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : []);
     return async event => {
@@ -18,6 +25,7 @@ export function createCommandHandler({ client, session, dataDir, handleMessage, 
             log.info(`WAHA acknowledgement: ${event.payload?.id} (${event.payload?.ack})`);
             return;
         }
+        if (!isActive()) return;
         const message = event.payload;
         if (event.event !== 'message.any' || !message?.id || typeof message.body !== 'string') {
             return;

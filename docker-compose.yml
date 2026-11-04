@@ -12,6 +12,7 @@ services:
                 condition: service_healthy
         environment:
             DATA_DIR: /app/data
+            BOT_START_AT: ${BOT_START_AT:-}
             WAHA_URL: http://waha:3000
             WAHA_API_KEY: ${WAHA_API_KEY:?Set WAHA_API_KEY in .env}
             WAHA_SESSION: ${WAHA_SESSION:-default}

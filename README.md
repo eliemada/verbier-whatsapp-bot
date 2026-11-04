@@ -31,6 +31,10 @@ docker compose -f docker-compose.unraid.yml up -d
 
 See [NAS deployment](docs/deployment/nas.md) and [controlled updates](docs/deployment/auto-updates.md). WAHA is pinned to `gows-2026.10.1`; pin the bot to a tested commit using `BOT_IMAGE_TAG`. Both containers opt out of Watchtower.
 
+## Season start
+
+Set `BOT_START_AT=2026-11-15T08:00:00+01:00` in `.env` to pause reports and command replies until 15 November 2026 at 08:00 Swiss time. Recreate the bot after changing this setting. WAHA stays connected; the bot resumes automatically at the configured instant and follows its normal 08:00/noon schedule. Paused commands are ignored, and missed reports are not replayed. Leave the value empty for immediate operation.
+
 ## Commands
 
 | Command                                  | Description                           |

@@ -7,6 +7,7 @@ const CHATS_FILE = `${DATA_DIR}/.chats.json`;
 
 export const CONFIG = Object.freeze({
     dataDir: DATA_DIR,
+    startAt: process.env.BOT_START_AT || '',
     controlPort: Number(process.env.CONTROL_PORT || 3000),
     webhookPort: Number(process.env.WEBHOOK_PORT || 3001),
     webhookUrl: process.env.WEBHOOK_URL || 'http://verbier-bot:3001/webhooks/waha',

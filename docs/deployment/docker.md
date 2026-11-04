@@ -46,6 +46,10 @@ docker exec verbier-waha node -e "fetch('http://127.0.0.1:3000/api/sessions/defa
 
 Do not delete the session directory to refresh a QR. If `WAHA_SESSION` differs from `default`, substitute it in these API paths.
 
+## Delay the season start
+
+Set `BOT_START_AT` to an ISO timestamp with an explicit timezone, for example `2026-11-15T08:00:00+01:00`, then run `docker compose up -d verbier-bot`. Before that instant, scheduled reports and command replies are suppressed, and operator sends return HTTP 409. WhatsApp stays linked. `/health` remains HTTP 200 when connected and exposes `active: false` plus `startsAt`. The date is re-evaluated on each request and schedule tick, so activation survives container restarts and needs no one-off host timer. Missed reports are not replayed.
+
 ## Verify
 
 Send `!snow subscribe` in the target group if it is not already subscribed. Send `!!` to request a live photo and weather. Confirm that the message arrives in the intended group.
