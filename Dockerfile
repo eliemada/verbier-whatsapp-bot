@@ -38,8 +38,8 @@ COPY src/ ./src/
 VOLUME /app/.wwebjs_auth
 VOLUME /app/data
 
-# Health check - verify node process is running
+# Health check - verify the client is ready and connected to WhatsApp
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD node -e "process.exit(0)" || exit 1
+    CMD node -e "fetch('http://127.0.0.1:' + (process.env.CONTROL_PORT || 3000) + '/health', { signal: AbortSignal.timeout(5000) }).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 CMD ["node", "--disable-warning=DEP0040", "bot.js"]

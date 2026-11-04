@@ -15,7 +15,9 @@ function getWeatherEmoji(temp, precip) {
  */
 export async function getWeather() {
     try {
-        const response = await fetch(CONFIG.meteoSwissUrl);
+        const response = await fetch(CONFIG.meteoSwissUrl, {
+            signal: AbortSignal.timeout(15000),
+        });
         if (!response.ok) throw new Error(`MeteoSwiss API error: ${response.status}`);
 
         const csv = await response.text();

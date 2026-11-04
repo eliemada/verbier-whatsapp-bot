@@ -3,7 +3,6 @@
  * Sends daily snow images from Verbier webcam with MeteoSwiss weather data.
  */
 
-import fs from 'fs';
 import path from 'path';
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth, MessageMedia } = pkg;
@@ -16,24 +15,16 @@ import { log } from './src/logger.js';
 import { getCurrentImage } from './src/teleport.js';
 import { getWeather, formatCaption } from './src/weather.js';
 import { handleMessage } from './src/commands.js';
+import { cleanupBrowserLocks } from './src/session.js';
+import { createControlServer } from './src/control.js';
 
 // =============================================================================
 // Clean up stale Chromium lock files from previous crashes
 // =============================================================================
 
 const authDir = path.join(process.cwd(), '.wwebjs_auth');
-for (const lockName of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
-    const lockFile = path.join(authDir, 'session', 'Default', lockName);
-    if (fs.existsSync(lockFile)) {
-        fs.unlinkSync(lockFile);
-        log.info(`Removed stale Chromium lock file: ${lockName}`);
-    }
-    // Also check one level up (varies by whatsapp-web.js version)
-    const altLock = path.join(authDir, 'session', lockName);
-    if (fs.existsSync(altLock)) {
-        fs.unlinkSync(altLock);
-        log.info(`Removed stale Chromium lock file: ${lockName}`);
-    }
+for (const file of cleanupBrowserLocks(authDir)) {
+    log.info(`Removed stale Chromium lock file: ${file}`);
 }
 
 // =============================================================================
@@ -41,7 +32,7 @@ for (const lockName of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) 
 // =============================================================================
 
 const client = new Client({
-    authStrategy: new LocalAuth(),
+    authStrategy: new LocalAuth({ dataPath: authDir }),
     puppeteer: {
         headless: true,
         args: [
@@ -54,52 +45,111 @@ const client = new Client({
     },
 });
 
+let ready = false;
+let pairingQr = null;
+let shuttingDown = false;
+const scheduledTasks = [];
+
 client.on('qr', qr => {
+    ready = false;
+    pairingQr = qr;
     log.info('Scan QR code with WhatsApp:');
     qrcode.generate(qr, { small: true });
 });
 
 client.on('ready', () => {
+    ready = true;
+    pairingQr = null;
     log.info('WhatsApp bot ready');
     setupSchedule();
 });
 
-client.on('authenticated', () => log.info('Authenticated'));
-client.on('auth_failure', msg => log.error('Auth failed:', msg));
-client.on('message', handleMessage);
+client.on('authenticated', () => {
+    pairingQr = null;
+    log.info('Authenticated');
+});
+client.on('auth_failure', msg => {
+    ready = false;
+    log.error('Auth failed:', msg);
+    shutdown('auth_failure', 1);
+});
+client.on('disconnected', reason => {
+    ready = false;
+    log.error('WhatsApp disconnected:', reason);
+    shutdown('disconnected', 1);
+});
+client.on('message', msg => {
+    handleMessage(msg).catch(error => log.error('Message handling failed:', error.message));
+});
+client.on('message_ack', (message, ack) => {
+    if (message.fromMe) log.info(`Message ${message.id._serialized} acknowledgement: ${ack}`);
+});
+
+async function getStatus() {
+    const state = ready ? await client.getState() : null;
+    return { ready: ready && state === 'CONNECTED', state, pairingRequired: Boolean(pairingQr) };
+}
+
+const control = createControlServer({
+    getStatus,
+    getQr: () => pairingQr,
+    getChat: async id => {
+        if (!ready) throw new Error('WhatsApp is not connected');
+        const chat = await client.getChatById(id);
+        return { id: chat.id._serialized, name: chat.name, isGroup: chat.isGroup };
+    },
+    sendUpdate: async (chatId, title = 'Verbier bot test — current view') => {
+        const [image, weather] = await Promise.all([getCurrentImage(), getWeather()]);
+        const message = await sendToChat(chatId, image, formatCaption(weather, title));
+        return { id: message.id._serialized, ack: message.ack };
+    },
+    getDelivery: async id => {
+        if (!ready) throw new Error('WhatsApp is not connected');
+        const message = await client.getMessageById(id);
+        if (!message) throw new Error('Message not found');
+        return { id: message.id._serialized, ack: message.ack };
+    },
+});
+control.on('error', error => {
+    log.error('Control server failed:', error.message);
+    shutdown('control_error', 1);
+});
+control.listen(CONFIG.controlPort, '127.0.0.1');
 
 // =============================================================================
 // Messaging
 // =============================================================================
 
 async function sendToChat(chatId, image, caption) {
-    try {
-        const chat = await client.getChatById(chatId);
-        const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier.jpg');
-        await chat.sendMessage(media, { caption });
-        log.info(`Sent to ${chat.name}`);
-        return true;
-    } catch (error) {
-        log.error(`Failed to send to ${chatId}:`, error.message);
-        return false;
-    }
+    const chat = await client.getChatById(chatId);
+    const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier.jpg');
+    const message = await chat.sendMessage(media, {
+        caption,
+        sendSeen: false,
+        waitUntilMsgSent: true,
+    });
+    if (!message) throw new Error('WhatsApp did not return a sent message');
+    log.info(`Sent to ${chat.name}: ${message.id._serialized} (ack: ${message.ack})`);
+    return message;
 }
 
 async function broadcast(image, caption) {
     const chatIds = chatManager.getAll();
     if (!chatIds.length) {
-        log.error('No chats subscribed');
-        return;
+        throw new Error('No chats subscribed');
     }
-    await Promise.all(chatIds.map(id => sendToChat(id, image, caption)));
+    const results = await Promise.allSettled(chatIds.map(id => sendToChat(id, image, caption)));
+    const failed = results.filter(result => result.status === 'rejected');
+    for (const result of failed) log.error('Broadcast send failed:', result.reason.message);
+    if (failed.length) throw new Error(`Failed to send to ${failed.length} subscribed chat(s)`);
 }
 
-async function sendScheduledUpdate(hour, minute, title) {
+async function sendScheduledUpdate(title) {
     try {
         // Use getCurrentImage for live feed instead of getImageAt
         // getImageAt with exact current time fails because the frame isn't available yet
         const [image, weather] = await Promise.all([getCurrentImage(), getWeather()]);
-        const date = new Date().toLocaleDateString('en-CH');
+        const date = new Date().toLocaleDateString('en-CH', { timeZone: CONFIG.timezone });
         await broadcast(image, formatCaption(weather, `${title} - ${date}`));
     } catch (error) {
         log.error('Scheduled update failed:', error.message);
@@ -111,24 +161,29 @@ async function sendScheduledUpdate(hour, minute, title) {
 // =============================================================================
 
 function setupSchedule() {
+    if (scheduledTasks.length) return;
     const { morning, noon } = CONFIG.schedule;
 
-    cron.schedule(
-        `${morning.minute} ${morning.hour} * * *`,
-        () => {
-            log.info('Sending morning update');
-            sendScheduledUpdate(morning.hour, morning.minute, 'Good morning! Verbier at 8 AM');
-        },
-        { timezone: CONFIG.timezone },
+    scheduledTasks.push(
+        cron.schedule(
+            `${morning.minute} ${morning.hour} * * *`,
+            () => {
+                log.info('Sending morning update');
+                return sendScheduledUpdate('Good morning! Verbier at 8 AM');
+            },
+            { timezone: CONFIG.timezone, noOverlap: true },
+        ),
     );
 
-    cron.schedule(
-        `${noon.minute} ${noon.hour} * * *`,
-        () => {
-            log.info('Sending noon update');
-            sendScheduledUpdate(noon.hour, noon.minute, 'Noon update from Verbier');
-        },
-        { timezone: CONFIG.timezone },
+    scheduledTasks.push(
+        cron.schedule(
+            `${noon.minute} ${noon.hour} * * *`,
+            () => {
+                log.info('Sending noon update');
+                return sendScheduledUpdate('Noon update from Verbier');
+            },
+            { timezone: CONFIG.timezone, noOverlap: true },
+        ),
     );
 
     log.info(`Scheduled: ${morning.hour}:00 & ${noon.hour}:00 (${CONFIG.timezone})`);
@@ -139,15 +194,22 @@ function setupSchedule() {
 // Graceful Shutdown
 // =============================================================================
 
-async function shutdown(signal) {
+async function shutdown(signal, exitCode = 0) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    ready = false;
     log.info(`Received ${signal}, shutting down...`);
+    const timeout = setTimeout(() => process.exit(exitCode || 1), 10000);
+    timeout.unref();
+    control.close();
+    for (const task of scheduledTasks) task.stop();
     try {
         await client.destroy();
         log.info('WhatsApp client closed');
     } catch (error) {
         log.error('Error during shutdown:', error.message);
     }
-    process.exit(0);
+    process.exit(exitCode);
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
@@ -159,4 +221,7 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 
 log.info('Starting Verbier bot...');
 log.info(`Feed: ${CONFIG.feedId}`);
-client.initialize();
+client.initialize().catch(error => {
+    log.error('WhatsApp initialization failed:', error.message);
+    shutdown('initialization_failure', 1);
+});

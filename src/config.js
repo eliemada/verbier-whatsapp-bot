@@ -5,8 +5,10 @@ const DATA_DIR = process.env.DATA_DIR || '.';
 const CHATS_FILE = `${DATA_DIR}/.chats.json`;
 
 export const CONFIG = Object.freeze({
+    controlPort: Number(process.env.CONTROL_PORT || 3000),
     feedId: 'fe5nsqhtejqi',
     teleportApi: 'https://www.teleport.io/api/v2',
+    webcamFallbackUrl: 'https://lecarrefour.roundshot.com/cams/50',
     meteoSwissUrl: 'https://data.geo.admin.ch/ch.meteoschweiz.messwerte-aktuell/VQHA80.csv',
     timezone: 'Europe/Zurich',
     stations: {

@@ -1,5 +1,6 @@
 import { CONFIG } from './config.js';
 import { createVerbierDateTime, getVerbierNow } from './utils.js';
+import { log } from './logger.js';
 
 /**
  * Fetches an image from Teleport.io.
@@ -10,18 +11,37 @@ async function fetchImage(frametime = null) {
     let url = `${CONFIG.teleportApi}/frame-get?feedid=${CONFIG.feedId}&sizecode=x768`;
     if (frametime) url += `&frametime=${frametime}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(20000) });
     if (!response.ok) {
         if (response.status === 404 && frametime) {
             throw new Error('Historical footage not available for this time');
         }
         throw new Error(`Teleport API error: ${response.status}`);
     }
-    return Buffer.from(await response.arrayBuffer());
+    return readImage(response);
 }
 
 export async function getCurrentImage() {
-    return fetchImage();
+    try {
+        return await fetchImage();
+    } catch (error) {
+        log.info(`Primary webcam unavailable (${error.message}); using Le Carrefour, Verbier`);
+        const response = await fetch(CONFIG.webcamFallbackUrl, {
+            signal: AbortSignal.timeout(20000),
+        });
+        if (!response.ok) {
+            throw new Error(`Webcam fallback error: ${response.status}`, { cause: error });
+        }
+        return readImage(response);
+    }
+}
+
+async function readImage(response) {
+    const image = Buffer.from(await response.arrayBuffer());
+    if (image.length < 3 || image[0] !== 0xff || image[1] !== 0xd8 || image[2] !== 0xff) {
+        throw new Error('Webcam returned an invalid JPEG image');
+    }
+    return image;
 }
 
 /**

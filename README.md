@@ -5,6 +5,7 @@ WhatsApp bot that sends webcam images from Verbier with real-time weather data f
 ## What it does
 
 - Sends live webcam images from Verbier ski resort (via [Teleport.io](https://teleport.io))
+- Falls back to the live [Le Carrefour panorama](https://lecarrefour.roundshot.com/) when the original Teleport feed is unavailable. Historical commands use Teleport only; unavailable archives are reported explicitly.
 - Includes weather from two MeteoSwiss stations:
     - **Les Attelas (2734m)** - mountain/piste conditions
     - **Montagnier (839m)** - valley conditions
@@ -73,6 +74,16 @@ docker compose up -d
 docker compose logs -f
 ```
 
+The container is healthy only when WhatsApp is connected. If it needs pairing, scan the QR in the logs under WhatsApp → Settings → Linked Devices. Keep the session volume when redeploying. Startup removes stale Chromium lock symlinks left by stopped containers without deleting session data.
+
+An operator API listens on `127.0.0.1:3000` **inside the container** (no published port). Use `docker exec` to access it:
+
+```bash
+docker exec verbier-whatsapp-bot node -e "fetch('http://127.0.0.1:3000/health').then(async r => { console.log(await r.json()); process.exit(r.ok ? 0 : 1); })"
+```
+
+`GET /chat?id=CHAT_ID` verifies a recipient. `POST /send` with a JSON body such as `{"chatId":"YOUR_GROUP_ID@g.us","title":"Verbier bot test"}` sends one current image and weather update to that specific chat. It does not change subscriptions. The result includes the WhatsApp message ID and acknowledgement; `GET /delivery?id=MESSAGE_ID` checks acknowledgement again (1 = accepted by WhatsApp, 2 = delivered, 3 = read). Do not repeat a send just because acknowledgement is still pending. `GET /qr` returns the current pairing QR payload when linking is needed; treat it as a credential.
+
 ### NAS Deployment (with Auto-Updates)
 
 The NAS compose files include [Watchtower](https://containrrr.dev/watchtower/) for automatic updates. When a new image is pushed to GitHub, Watchtower pulls it and restarts the container.
@@ -109,5 +120,5 @@ Stored in appdata:
 
 ## Requirements
 
-- Node.js >= 18 (or Docker)
+- Node.js 22 or 24 for development (or Docker, which uses Node.js 24)
 - A WhatsApp account to run the bot
