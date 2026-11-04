@@ -1,0 +1,46 @@
+src/webhooks.js
+  s_686dc4c812bf3f::t_bb20c7092346d8 8-15,28
+README.md
+  s_686dc4c812bf3f::t_a9a66291222625 34-37
+src/config.js
+  s_686dc4c812bf3f::t_bb20c7092346d8 10
+tests/activation.test.js
+  s_686dc4c812bf3f::t_bb20c7092346d8 1-27
+tests/webhooks.test.js
+  s_686dc4c812bf3f::t_bb20c7092346d8 52-63
+docker-compose.nas.yml
+  s_686dc4c812bf3f::t_a9a66291222625 14
+src/activation.js
+  s_686dc4c812bf3f::t_bb20c7092346d8 1-15
+docker-compose.unraid.yml
+  s_686dc4c812bf3f::t_a9a66291222625 14
+docker-compose.yml
+  s_686dc4c812bf3f::t_a9a66291222625 15
+.env.example
+  s_686dc4c812bf3f::t_a9a66291222625 11-13
+bot.js
+  s_686dc4c812bf3f::t_bb20c7092346d8 11,17,47,60,67-70,138-140
+docs/deployment/docker.md
+  s_686dc4c812bf3f::t_a9a66291222625 49-52
+tests/control.test.js
+  s_686dc4c812bf3f::t_bb20c7092346d8 27-45
+src/control.js
+  s_686dc4c812bf3f::t_bb20c7092346d8 30-31,34-35
+  s_686dc4c812bf3f::t_de65d9d0c52091 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82b7cbb28c791a5415cd6cf7c6263e95da0a0ff1",
+  "prompts": {},
+  "sessions": {
+    "s_686dc4c812bf3f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a4df-19c7-7b50-8144-ba4b189ad3c0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Elie BRUNO <contact@eliebruno.com>"
+    }
+  }
+}
