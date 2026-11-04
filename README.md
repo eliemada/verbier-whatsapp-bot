@@ -1,124 +1,67 @@
 # Verbier WhatsApp Bot
 
-WhatsApp bot that sends webcam images from Verbier with real-time weather data from MeteoSwiss.
+Sends Verbier webcam images and MeteoSwiss weather to subscribed WhatsApp chats through **WAHA with the GOWS engine**. The bot runs on Node.js 24; WhatsApp runs in a separate, persistent WAHA container without Chromium.
 
-## What it does
+- Daily updates at **08:00 and 12:00 Europe/Zurich**.
+- Live photos use Teleport, with the [Le Carrefour panorama](https://lecarrefour.roundshot.com/) as fallback when that feed is unavailable.
+- Weather from **Les Attelas (2734m)** and **Montagnier (839m)**.
+- Historical requests use Teleport archives only; unavailable footage is reported explicitly.
 
-- Sends live webcam images from Verbier ski resort (via [Teleport.io](https://teleport.io))
-- Falls back to the live [Le Carrefour panorama](https://lecarrefour.roundshot.com/) when the original Teleport feed is unavailable. Historical commands use Teleport only; unavailable archives are reported explicitly.
-- Includes weather from two MeteoSwiss stations:
-    - **Les Attelas (2734m)** - mountain/piste conditions
-    - **Montagnier (839m)** - valley conditions
-- Scheduled daily updates at 8 AM and noon (Europe/Zurich)
-- On-demand commands for current or historical images
+## Run with Docker
 
-## Commands
-
-| Command             | Description                      |
-| ------------------- | -------------------------------- |
-| `!!`                | Current live image + weather     |
-| `!snow weather`     | Weather only                     |
-| `!snow 8am`         | Today's 8 AM image               |
-| `!snow noon`        | Today's noon image               |
-| `!snow 15:00`       | Today at specific time           |
-| `!snow 11-20`       | Historical date at noon          |
-| `!snow 11-20 8am`   | Historical date at specific time |
-| `!snow subscribe`   | Subscribe to daily updates       |
-| `!snow unsubscribe` | Unsubscribe from updates         |
-| `!snow chatid`      | Get chat ID (debug)              |
-
-## Setup
+Requires Docker Compose 2.20+ (for `include`) and a WhatsApp account.
 
 ```bash
-# Install dependencies
-npm install
-
-# Run the bot
-npm start
+cp .env.example .env
 ```
 
-On first run, scan the QR code with WhatsApp to authenticate.
-
-### Subscribe to Daily Updates
-
-1. Start the bot and scan QR
-2. In any chat/group, send `!snow subscribe`
-3. That's it! The chat will receive daily updates at 8 AM and noon.
-
-Use `!snow unsubscribe` to stop receiving updates.
-
-## Development
+Set separate, random `WAHA_API_KEY` and `WEBHOOK_SECRET` values in `.env`. Generate each with `openssl rand -hex 32`. Keep this file private.
 
 ```bash
-npm run dev          # Run with auto-reload
-npm run lint         # Check code
-npm run lint:fix     # Auto-fix lint issues
-npm run format       # Format code
+docker compose up --build -d
 ```
 
-## Data Sources
+Follow the [pairing and verification guide](docs/deployment/docker.md). After linking WhatsApp, send `!snow subscribe` in the intended group. Existing subscriptions in the bot data directory are retained.
 
-- **Webcam**: [Teleport.io](https://teleport.io) - Verbier feed
-- **Weather**: [MeteoSwiss Open Data](https://www.meteoswiss.admin.ch/services-and-publications/service/open-data.html) - 10-minute updates
-
-## Docker
-
-```bash
-# First run - see QR/pairing code
-docker compose up
-
-# After auth, run detached
-docker compose up -d
-
-# View logs
-docker compose logs -f
-```
-
-The container is healthy only when WhatsApp is connected. If it needs pairing, scan the QR in the logs under WhatsApp → Settings → Linked Devices. Keep the session volume when redeploying. Startup removes stale Chromium lock symlinks left by stopped containers without deleting session data.
-
-An operator API listens on `127.0.0.1:3000` **inside the container** (no published port). Use `docker exec` to access it:
-
-```bash
-docker exec verbier-whatsapp-bot node -e "fetch('http://127.0.0.1:3000/health').then(async r => { console.log(await r.json()); process.exit(r.ok ? 0 : 1); })"
-```
-
-`GET /chat?id=CHAT_ID` verifies a recipient. `POST /send` with a JSON body such as `{"chatId":"YOUR_GROUP_ID@g.us","title":"Verbier bot test"}` sends one current image and weather update to that specific chat. It does not change subscriptions. The result includes the WhatsApp message ID and acknowledgement; `GET /delivery?id=MESSAGE_ID` checks acknowledgement again (1 = accepted by WhatsApp, 2 = delivered, 3 = read). Do not repeat a send just because acknowledgement is still pending. `GET /qr` returns the current pairing QR payload when linking is needed; treat it as a credential.
-
-### NAS Deployment (with Auto-Updates)
-
-The NAS compose files include [Watchtower](https://containrrr.dev/watchtower/) for automatic updates. When a new image is pushed to GitHub, Watchtower pulls it and restarts the container.
-
-**Unraid:**
+For Unraid, set absolute data directories in `.env`, then use:
 
 ```bash
 docker compose -f docker-compose.unraid.yml up -d
 ```
 
-**Other NAS (Synology, QNAP, TrueNAS):**
+See [NAS deployment](docs/deployment/nas.md) and [controlled updates](docs/deployment/auto-updates.md). WAHA is pinned to `gows-2026.10.1`; pin the bot to a tested commit using `BOT_IMAGE_TAG`. Both containers opt out of Watchtower.
+
+## Commands
+
+| Command                                  | Description                           |
+| ---------------------------------------- | ------------------------------------- |
+| `!!`                                     | Current image and weather             |
+| `!snow weather`                          | Current weather                       |
+| `!snow 8am`, `!snow noon`, `!snow 15:00` | Historical image at a time            |
+| `!snow 11-20`, `!snow 11-20 8am`         | Historical date, optionally with time |
+| `!snow subscribe`                        | Daily updates for this chat           |
+| `!snow unsubscribe`                      | Stop this chat's updates              |
+| `!snow status`                           | Subscription status                   |
+| `!snow help`                             | Command list                          |
+
+`!verbier` is also accepted. Imported commands older than five minutes and bot API echoes are ignored. Processed command IDs are persisted to avoid duplicate responses after webhook retries or worker restarts.
+
+## Persistent data
+
+- `BOT_DATA_DIR`: `.chats.json` subscriptions and `.handled-messages.json` command IDs.
+- `WAHA_DATA_DIR`: WhatsApp linked-device credentials and message/group storage.
+
+Back up both directories before upgrades. Browser session files from the previous whatsapp-web.js version cannot authenticate WAHA; migration requires one new QR scan. Keep the old files for rollback.
+
+## Development
+
+Use Node.js 22.22.1+ (CI tests Node 22 and 24).
 
 ```bash
-# Edit docker-compose.nas.yml to set your volume path first
-docker compose -f docker-compose.nas.yml up -d
+npm ci
+npm run lint
+npm run format:check
+npm test
 ```
 
-### Auto-Updates
-
-Watchtower is included in the NAS compose files:
-
-- Checks for new images every 5 minutes
-- Only updates containers with the watchtower label
-- Cleans up old images automatically
-
-To disable auto-updates, remove the `watchtower` service from the compose file.
-
-### Persistent Data
-
-Stored in appdata:
-
-- WhatsApp session auth
-- Chat subscriptions (`.chats.json`)
-
-## Requirements
-
-- Node.js 22 or 24 for development (or Docker, which uses Node.js 24)
-- A WhatsApp account to run the bot
+See [local setup](docs/development/setup.md), [architecture](docs/architecture/overview.md), and the [operator endpoints](docs/deployment/docker.md#operator-endpoints).

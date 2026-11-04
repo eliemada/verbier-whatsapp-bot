@@ -1,6 +1,3 @@
-import pkg from 'whatsapp-web.js';
-const { MessageMedia } = pkg;
-
 import { getCurrentImage, getImageAt } from './teleport.js';
 import { getWeather, formatCaption } from './weather.js';
 import { parseTime, parseDate } from './utils.js';
@@ -10,22 +7,17 @@ import { log } from './logger.js';
 const commands = {
     async '!!'(msg) {
         const [image, weather] = await Promise.all([getCurrentImage(), getWeather()]);
-        const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier.jpg');
-        await msg.reply(media, null, {
-            caption: formatCaption(weather, 'Current view from Verbier'),
-        });
+        await msg.replyImage(image, formatCaption(weather, 'Current view from Verbier'));
     },
 
     async '!snow 8am'(msg) {
         const image = await getImageAt(8, 0);
-        const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier_8am.jpg');
-        await msg.reply(media, null, { caption: 'Verbier at 8 AM today' });
+        await msg.replyImage(image, 'Verbier at 8 AM today', 'verbier_8am.jpg');
     },
 
     async '!snow noon'(msg) {
         const image = await getImageAt(12, 0);
-        const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier_noon.jpg');
-        await msg.reply(media, null, { caption: 'Verbier at noon today' });
+        await msg.replyImage(image, 'Verbier at noon today', 'verbier_noon.jpg');
     },
 
     async '!snow weather'(msg) {
@@ -176,8 +168,7 @@ export async function handleMessage(msg) {
                 return;
             }
             const image = await getImageAt(time.hour, time.minute);
-            const media = new MessageMedia('image/jpeg', image.toString('base64'), 'verbier.jpg');
-            await msg.reply(media, null, { caption: `Verbier today at ${time.label}` });
+            await msg.replyImage(image, `Verbier today at ${time.label}`);
             return;
         }
 
@@ -198,20 +189,10 @@ export async function handleMessage(msg) {
                     return;
                 }
                 const image = await getImageAt(time.hour, time.minute, date);
-                const media = new MessageMedia(
-                    'image/jpeg',
-                    image.toString('base64'),
-                    'verbier.jpg',
-                );
-                await msg.reply(media, null, { caption: `Verbier on ${date} at ${time.label}` });
+                await msg.replyImage(image, `Verbier on ${date} at ${time.label}`);
             } else {
                 const image = await getImageAt(12, 0, date);
-                const media = new MessageMedia(
-                    'image/jpeg',
-                    image.toString('base64'),
-                    'verbier.jpg',
-                );
-                await msg.reply(media, null, { caption: `Verbier on ${date} at noon` });
+                await msg.replyImage(image, `Verbier on ${date} at noon`);
             }
             return;
         }

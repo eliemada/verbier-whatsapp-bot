@@ -15,7 +15,7 @@ export function createControlServer({ getStatus, getQr, getChat, sendUpdate, get
                 return reply(status.ready ? 200 : 503, status);
             }
             if (request.method === 'GET' && url.pathname === '/qr') {
-                const qr = getQr();
+                const qr = await getQr();
                 return reply(qr ? 200 : 404, qr ? { qr } : { error: 'No pairing QR available' });
             }
             if (request.method === 'GET' && url.pathname === '/chat') {

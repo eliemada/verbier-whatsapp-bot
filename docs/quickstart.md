@@ -1,63 +1,13 @@
 # Quick Start
 
-Get the Verbier bot running in under 5 minutes.
+1. Install Docker with Compose 2.20 or newer.
+2. Clone this repository and copy `.env.example` to `.env`.
+3. Set distinct `WAHA_API_KEY` and `WEBHOOK_SECRET` values, generating each with `openssl rand -hex 32`.
+4. Run `docker compose up --build -d`.
+5. [Retrieve the pairing QR](deployment/docker.md#pair-whatsapp) and scan it in WhatsApp → Settings → Linked Devices.
+6. Send `!snow subscribe` in your chosen WhatsApp group.
+7. Send `!!` to request a current image and weather.
 
-## Prerequisites
+Subscriptions receive updates at **08:00 and 12:00 Europe/Zurich**. Data and WhatsApp authentication persist in separate directories. Keep both when redeploying.
 
-- Node.js 18+ **or** Docker
-- A WhatsApp account (will be used by the bot)
-
-## Option 1: Docker (Recommended)
-
-```bash
-# Clone the repository
-git clone https://github.com/eliemada/verbier-whatsapp-bot.git
-cd verbier-whatsapp-bot
-
-# Start the bot (first run - watch for QR code)
-docker compose up
-
-# Scan the QR code with WhatsApp
-# After authenticated, restart detached:
-docker compose up -d
-```
-
-## Option 2: Node.js
-
-```bash
-# Clone and install
-git clone https://github.com/eliemada/verbier-whatsapp-bot.git
-cd verbier-whatsapp-bot
-npm install
-
-# Start the bot
-npm start
-```
-
-## First Run
-
-1. The bot will display a QR code in the terminal
-2. Open WhatsApp on your phone
-3. Go to **Settings** → **Linked Devices** → **Link a Device**
-4. Scan the QR code
-5. The bot is now connected!
-
-## Subscribe to Updates
-
-In any WhatsApp chat or group:
-
-```
-!snow subscribe
-```
-
-That chat will now receive daily updates at 8 AM and noon (Europe/Zurich timezone).
-
-## Test It
-
-Send `!!` in any chat to get the current webcam image with weather.
-
-## Next Steps
-
-- [All Commands](commands.md) - Full command reference
-- [NAS Deployment](deployment/nas.md) - Deploy on your home server
-- [Auto-Updates](deployment/auto-updates.md) - Set up automatic deployments
+Historical commands depend on the original Teleport archive, which may be unavailable. Live requests automatically use the Le Carrefour fallback.

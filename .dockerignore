@@ -8,3 +8,7 @@ node_modules
 .prettierrc
 eslint.config.js
 data
+
+waha-data
+.chats.json*
+.handled-messages.json*

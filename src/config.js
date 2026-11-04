@@ -1,11 +1,19 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs';
+import 'dotenv/config';
 
 // Use data dir if exists (Docker), otherwise current dir
 const DATA_DIR = process.env.DATA_DIR || '.';
 const CHATS_FILE = `${DATA_DIR}/.chats.json`;
 
 export const CONFIG = Object.freeze({
+    dataDir: DATA_DIR,
     controlPort: Number(process.env.CONTROL_PORT || 3000),
+    webhookPort: Number(process.env.WEBHOOK_PORT || 3001),
+    webhookUrl: process.env.WEBHOOK_URL || 'http://verbier-bot:3001/webhooks/waha',
+    webhookSecret: process.env.WEBHOOK_SECRET || '',
+    wahaUrl: process.env.WAHA_URL || 'http://waha:3000',
+    wahaApiKey: process.env.WAHA_API_KEY || '',
+    wahaSession: process.env.WAHA_SESSION || 'default',
     feedId: 'fe5nsqhtejqi',
     teleportApi: 'https://www.teleport.io/api/v2',
     webcamFallbackUrl: 'https://lecarrefour.roundshot.com/cams/50',
@@ -37,7 +45,9 @@ function loadChatIds() {
 }
 
 function saveChatIds(chatIds) {
-    writeFileSync(CHATS_FILE, JSON.stringify({ chatIds }, null, 2));
+    mkdirSync(DATA_DIR, { recursive: true });
+    writeFileSync(`${CHATS_FILE}.tmp`, JSON.stringify({ chatIds }, null, 2));
+    renameSync(`${CHATS_FILE}.tmp`, CHATS_FILE);
 }
 
 // Mutable chat IDs list

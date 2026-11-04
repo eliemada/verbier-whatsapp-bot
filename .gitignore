@@ -3,6 +3,7 @@ node_modules/
 
 # Docker data
 data/
+waha-data/
 
 # WhatsApp session data
 .wwebjs_auth/
@@ -14,6 +15,9 @@ data/
 
 # Chat subscriptions (persisted data)
 .chats.json
+.chats.json.tmp
+.handled-messages.json
+.handled-messages.json.tmp
 
 # OS
 .DS_Store

@@ -1,0 +1,28 @@
+services:
+    waha:
+        image: devlikeapro/waha:gows-2026.10.1
+        container_name: verbier-waha
+        restart: unless-stopped
+        environment:
+            WHATSAPP_DEFAULT_ENGINE: GOWS
+            WAHA_API_KEY: ${WAHA_API_KEY:?Set WAHA_API_KEY in .env}
+            WAHA_WORKER_RESTART_SESSIONS: 'true'
+            WAHA_DASHBOARD_ENABLED: 'false'
+            WHATSAPP_SWAGGER_ENABLED: 'false'
+            WAHA_PRINT_QR: 'false'
+        ports:
+            - '127.0.0.1:${WAHA_PORT:-3010}:3000'
+        volumes:
+            - ${WAHA_DATA_DIR:-./waha-data}:/app/.sessions
+        labels:
+            com.centurylinklabs.watchtower.enable: 'false'
+        healthcheck:
+            test:
+                - CMD
+                - node
+                - -e
+                - "fetch('http://127.0.0.1:3000/health', {headers: {'X-Api-Key':process.env.WAHA_API_KEY}, signal:AbortSignal.timeout(5000)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+            interval: 30s
+            timeout: 10s
+            start_period: 30s
+            retries: 3
