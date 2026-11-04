@@ -1,0 +1,59 @@
+package.json
+  s_686dc4c812bf3f::t_aa3f3abecbd4cf 30-31
+docs/development/testing.md
+  s_686dc4c812bf3f::t_91ffe476adce77 9
+docs/architecture/overview.md
+  s_686dc4c812bf3f::t_91ffe476adce77 9
+docs/README.md
+  s_686dc4c812bf3f::t_91ffe476adce77 5
+bot.js
+  s_686dc4c812bf3f::t_3189060ccf8051 5
+src/webcams.js
+  s_686dc4c812bf3f::t_3189060ccf8051 1-15,17-22,24-28,30-38,40-113,115-125,131-152
+  s_686dc4c812bf3f::t_3bb219bacffd03 39,126-127,129-130
+  s_686dc4c812bf3f::t_72600fc3017790 16,23,29,114,128
+Dockerfile
+  s_686dc4c812bf3f::t_3189060ccf8051 2
+tests/commands.test.js
+  s_686dc4c812bf3f::t_45c0a1628f80b3 1-57
+tests/webcams.test.js
+  s_686dc4c812bf3f::t_45c0a1628f80b3 1-77
+  s_686dc4c812bf3f::t_afdb8018f679cc 78-99
+docs/commands.md
+  s_686dc4c812bf3f::t_fc65f938542b5d 7-8,10-14
+  s_686dc4c812bf3f::t_91ffe476adce77 9,24-38,58
+  s_686dc4c812bf3f::t_ad021584674c3b 59
+docs/quickstart.md
+  s_686dc4c812bf3f::t_91ffe476adce77 13
+src/commands.js
+  s_686dc4c812bf3f::t_3189060ccf8051 1-2,11-22,119-121,151,174-186
+  s_686dc4c812bf3f::t_e51751970c7a7f 187-189
+docs/architecture/structure.md
+  s_686dc4c812bf3f::t_fc65f938542b5d 11-13
+tests/teleport.test.js
+  s_686dc4c812bf3f::t_45c0a1628f80b3 2,7-8,11-15,19-20
+README.md
+  s_686dc4c812bf3f::t_91ffe476adce77 6,42-44,55-59
+  s_686dc4c812bf3f::t_db4815c7f396ee 60
+docs/architecture/data-sources.md
+  s_686dc4c812bf3f::t_91ffe476adce77 3,5,14-24,35
+  s_686dc4c812bf3f::t_fc65f938542b5d 7-12
+package-lock.json
+  s_686dc4c812bf3f::t_90dc15b74fb19c 12-13,126-135,330-877,2704-2764,2879-2885
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca8dc84404e40e5d7f482cc22ab7d42ee25630e9",
+  "prompts": {},
+  "sessions": {
+    "s_686dc4c812bf3f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a4df-19c7-7b50-8144-ba4b189ad3c0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Elie BRUNO <contact@eliebruno.com>"
+    }
+  }
+}
