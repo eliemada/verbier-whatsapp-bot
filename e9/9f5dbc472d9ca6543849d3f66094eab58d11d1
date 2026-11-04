@@ -1,0 +1,47 @@
+.github/workflows/ci.yml
+  s_686dc4c812bf3f::t_57f44792498689 15,29-30
+src/control.js
+  s_686dc4c812bf3f::t_1f4d834e507b58 1-64
+src/weather.js
+  s_686dc4c812bf3f::t_1f4d834e507b58 18-20
+src/teleport.js
+  s_686dc4c812bf3f::t_1f4d834e507b58 3,14,21,25-31,35-44
+  s_686dc4c812bf3f::t_a39b87bd8c2293 32-34
+bot.js
+  s_686dc4c812bf3f::t_1f4d834e507b58 18-19,26-27,35,48-52,54-55,61-62,67-117,124-133,139,141-144,147,152,164,197-200,202-205,212,224-227
+  s_686dc4c812bf3f::t_633ebb65496f08 167-175,178-186
+src/session.js
+  s_686dc4c812bf3f::t_1f4d834e507b58 1-20
+src/config.js
+  s_686dc4c812bf3f::t_1f4d834e507b58 8,11
+tests/session.test.js
+  s_686dc4c812bf3f::t_a39b87bd8c2293 17,19
+  s_686dc4c812bf3f::t_633ebb65496f08 2-10,18
+  s_686dc4c812bf3f::t_57f44792498689 1,11-16,20-51
+tests/control.test.js
+  s_686dc4c812bf3f::t_57f44792498689 1-68
+README.md
+  s_686dc4c812bf3f::t_57f44792498689 8,77-86,123
+Dockerfile
+  s_686dc4c812bf3f::t_1f4d834e507b58 41,43
+tests/teleport.test.js
+  s_686dc4c812bf3f::t_c533cc1c22269e 38-41
+  s_686dc4c812bf3f::t_633ebb65496f08 17-18,29-30,48-50
+  s_686dc4c812bf3f::t_57f44792498689 1-16,19-28,31-37,42-47,51-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e99f5dbc472d9ca6543849d3f66094eab58d11d1",
+  "prompts": {},
+  "sessions": {
+    "s_686dc4c812bf3f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a4df-19c7-7b50-8144-ba4b189ad3c0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Elie BRUNO <contact@eliebruno.com>"
+    }
+  }
+}
