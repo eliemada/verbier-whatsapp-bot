@@ -6,7 +6,7 @@ flowchart LR
     WAHA -->|Authenticated webhooks| Bot[Node.js bot]
     Bot -->|HTTP API: text and images| WAHA
     Cron[08:00 and 12:00 Europe/Zurich] --> Bot
-    Bot --> Camera[Teleport / Le Carrefour]
+    Bot --> Camera[Roundshot / Skaping / Teleport archive]
     Bot --> Weather[MeteoSwiss]
     Bot --> Data[Subscriptions and command IDs]
     WAHA --> Session[Persistent WhatsApp session]

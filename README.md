@@ -3,7 +3,7 @@
 Sends Verbier webcam images and MeteoSwiss weather to subscribed WhatsApp chats through **WAHA with the GOWS engine**. The bot runs on Node.js 24; WhatsApp runs in a separate, persistent WAHA container without Chromium.
 
 - Daily updates at **08:00 and 12:00 Europe/Zurich**.
-- Live photos use Teleport, with the [Le Carrefour panorama](https://lecarrefour.roundshot.com/) as fallback when that feed is unavailable.
+- One labelled photo combines **Le Carrefour, Les Attelas, Savoleyres and the Hôtel W/Médran village view**, using the public Roundshot and Skaping feeds.
 - Weather from **Les Attelas (2734m)** and **Montagnier (839m)**.
 - Historical requests use Teleport archives only; unavailable footage is reported explicitly.
 
@@ -39,7 +39,9 @@ Set `BOT_START_AT=2026-11-15T08:00:00+01:00` in `.env` to pause reports and comm
 
 | Command                                  | Description                           |
 | ---------------------------------------- | ------------------------------------- |
-| `!!`                                     | Current image and weather             |
+| `!!`                                     | All webcam views and weather          |
+| `!snow cameras`                          | List cameras                          |
+| `!snow camera attelas`                   | One selected camera                   |
 | `!snow weather`                          | Current weather                       |
 | `!snow 8am`, `!snow noon`, `!snow 15:00` | Historical image at a time            |
 | `!snow 11-20`, `!snow 11-20 8am`         | Historical date, optionally with time |
@@ -49,6 +51,12 @@ Set `BOT_START_AT=2026-11-15T08:00:00+01:00` in `.env` to pause reports and comm
 | `!snow help`                             | Command list                          |
 
 `!verbier` is also accepted. Imported commands older than five minutes and bot API echoes are ignored. Processed command IDs are persisted to avoid duplicate responses after webhook retries or worker restarts.
+
+## Webcam reports
+
+Daily reports and `!!` combine all four cameras into one JPEG with labels and source credits, preserving the full framing. If a camera fails, its panel says it is unavailable while the remaining views are still sent. If every camera fails, the bot reports/logs the error instead of sending an empty image.
+
+Use `!snow camera carrefour`, `!snow camera attelas`, `!snow camera savoleyres` or `!snow camera village` for an individual photo. Historical commands still use the original Teleport archive, which may be unavailable.
 
 ## Persistent data
 

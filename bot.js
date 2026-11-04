@@ -2,7 +2,7 @@
 import cron from 'node-cron';
 import { CONFIG, chatManager } from './src/config.js';
 import { log } from './src/logger.js';
-import { getCurrentImage } from './src/teleport.js';
+import { getCurrentImage } from './src/webcams.js';
 import { getWeather, formatCaption } from './src/weather.js';
 import { handleMessage } from './src/commands.js';
 import { createControlServer } from './src/control.js';

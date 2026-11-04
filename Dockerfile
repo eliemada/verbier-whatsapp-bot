@@ -1,4 +1,5 @@
 FROM node:24.22.2-alpine
+RUN apk add --no-cache font-dejavu
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev --ignore-scripts

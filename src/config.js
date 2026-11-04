@@ -17,7 +17,6 @@ export const CONFIG = Object.freeze({
     wahaSession: process.env.WAHA_SESSION || 'default',
     feedId: 'fe5nsqhtejqi',
     teleportApi: 'https://www.teleport.io/api/v2',
-    webcamFallbackUrl: 'https://lecarrefour.roundshot.com/cams/50',
     meteoSwissUrl: 'https://data.geo.admin.ch/ch.meteoschweiz.messwerte-aktuell/VQHA80.csv',
     timezone: 'Europe/Zurich',
     stations: {

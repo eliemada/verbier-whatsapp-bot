@@ -8,7 +8,9 @@
 | `src/control.js`      | Loopback operator API                                                        |
 | `src/commands.js`     | Transport-independent command handlers                                       |
 | `src/config.js`       | Environment, schedule and persistent chat subscriptions                      |
-| `src/teleport.js`     | Live webcam fallback and historical Teleport requests                        |
+| `src/teleport.js`     | Historical Teleport requests                                                 |
+| `src/webcams.js`      | Four live camera sources and labelled image composition                      |
+| `src/activation.js`   | Persistent season start date and pause status                                |
 | `src/weather.js`      | MeteoSwiss observations and captions                                         |
 | `src/utils.js`        | Date/time parsing in the Verbier timezone                                    |
 | `src/logger.js`       | Timestamped logs                                                             |

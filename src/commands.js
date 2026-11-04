@@ -1,4 +1,5 @@
-import { getCurrentImage, getImageAt } from './teleport.js';
+import { getImageAt } from './teleport.js';
+import { getCurrentImage, getWebcamImage, WEBCAMS } from './webcams.js';
 import { getWeather, formatCaption } from './weather.js';
 import { parseTime, parseDate } from './utils.js';
 import { chatManager } from './config.js';
@@ -7,7 +8,18 @@ import { log } from './logger.js';
 const commands = {
     async '!!'(msg) {
         const [image, weather] = await Promise.all([getCurrentImage(), getWeather()]);
-        await msg.replyImage(image, formatCaption(weather, 'Current view from Verbier'));
+        await msg.replyImage(image, formatCaption(weather, 'Webcam views from Verbier'));
+    },
+
+    async '!snow cameras'(msg) {
+        await msg.reply(
+            [
+                '*Verbier webcams*',
+                ...WEBCAMS.map(camera => `!snow camera ${camera.id} - ${camera.name}`),
+                '',
+                'Send !! for all views together with the weather.',
+            ].join('\n'),
+        );
     },
 
     async '!snow 8am'(msg) {
@@ -104,7 +116,9 @@ const commands = {
                 '*Verbier Snow Bot*',
                 '',
                 '*Images*',
-                '!! - Current live image',
+                '!! - All current webcam views + weather',
+                '!snow cameras - List the cameras',
+                '!snow camera attelas - One camera view',
                 '!snow 8am - Today at 8 AM',
                 '!snow 3 pm - Today at 3 PM',
                 '!snow 15 - Today at 15:00',
@@ -134,6 +148,7 @@ commands['!verbier unsubscribe'] = commands['!snow unsubscribe'];
 commands['!verbier status'] = commands['!snow status'];
 commands['!verbier chatid'] = commands['!snow chatid'];
 commands['!verbier help'] = commands['!snow help'];
+commands['!verbier cameras'] = commands['!snow cameras'];
 
 /**
  * Handle incoming message.
@@ -153,6 +168,22 @@ export async function handleMessage(msg) {
         // Direct command match
         if (commands[body]) {
             await commands[body](msg);
+            return;
+        }
+
+        const cameraMatch = body.match(/^!(snow|verbier)\s+camera\s+([a-z-]+)$/);
+        if (cameraMatch) {
+            const camera = WEBCAMS.find(item => item.id === cameraMatch[2]);
+            if (!camera) {
+                await msg.reply('Unknown camera. Send !snow cameras for the available views.');
+                return;
+            }
+            const image = await getWebcamImage(camera.id);
+            await msg.replyImage(
+                image,
+                `${camera.name}\nSource: ${camera.credit}\n${camera.pageUrl}`,
+                `verbier_${camera.id}.jpg`,
+            );
             return;
         }
 

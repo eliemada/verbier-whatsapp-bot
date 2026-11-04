@@ -4,14 +4,14 @@ All bot commands. Both `!snow` and `!verbier` prefixes work.
 
 ## Quick Reference
 
-| Command             | Description                  |
-| ------------------- | ---------------------------- |
-| `!!`                | Current live image + weather |
-| `!snow weather`     | Weather only                 |
-| `!snow subscribe`   | Subscribe to daily updates   |
-| `!snow unsubscribe` | Unsubscribe from updates     |
-| `!snow status`      | Check subscription status    |
-| `!snow help`        | Show help message            |
+| Command             | Description                |
+| ------------------- | -------------------------- |
+| `!!`                | All webcam views + weather |
+| `!snow weather`     | Weather only               |
+| `!snow subscribe`   | Subscribe to daily updates |
+| `!snow unsubscribe` | Unsubscribe from updates   |
+| `!snow status`      | Check subscription status  |
+| `!snow help`        | Show help message          |
 
 ## Image Commands
 
@@ -21,7 +21,21 @@ All bot commands. Both `!snow` and `!verbier` prefixes work.
 !!
 ```
 
-Returns the current live webcam image with weather data.
+Returns one labelled image combining Le Carrefour, Les Attelas, Savoleyres and the Hôtel W/Médran village camera, with weather data. A failed camera is marked unavailable; the other views are still included.
+
+### Individual Cameras
+
+```
+!snow cameras
+!snow camera carrefour
+!snow camera attelas
+!snow camera savoleyres
+!snow camera village
+```
+
+`!snow cameras` lists the available views. `!snow camera <name>` returns one camera photo with its source link. These commands also accept `!verbier`.
+
+When `BOT_START_AT` is set to a future date, reports and all command replies remain paused until that instant.
 
 ### Specific Time Today
 
@@ -40,6 +54,8 @@ Supported formats:
 - Keywords: `noon`, `midnight`
 
 ### Historical Images
+
+Historical views rely on the original Teleport archive. Missing footage is reported explicitly; a current image is never substituted.
 
 ```
 !snow 11-20           # November 20 at noon

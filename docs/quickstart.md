@@ -10,4 +10,4 @@
 
 Subscriptions receive updates at **08:00 and 12:00 Europe/Zurich**. Data and WhatsApp authentication persist in separate directories. Keep both when redeploying.
 
-Historical commands depend on the original Teleport archive, which may be unavailable. Live requests automatically use the Le Carrefour fallback.
+Historical commands depend on the original Teleport archive, which may be unavailable. Live reports combine the four cameras; `!snow cameras` lists the individual-camera commands.

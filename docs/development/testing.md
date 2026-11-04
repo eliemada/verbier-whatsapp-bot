@@ -6,7 +6,7 @@ The suite covers:
 
 - WAHA HTTP authentication, group image payloads, receipt lookup, session creation and restart-safe configuration.
 - Authenticated webhooks, owner/group reply routing, duplicate suppression across restarts, history filtering and ambiguous failure handling.
-- The loopback operator API, webcam fallback, historical errors, weather formatting and timezone parsing.
+- The loopback operator API, season-start boundary, multi-camera composition and partial failure, camera commands, historical errors, weather formatting and timezone parsing.
 
 HTTP adapter and webhook tests use local servers and isolated temporary directories. Unit tests do not require a live WhatsApp account or send real messages.
 
